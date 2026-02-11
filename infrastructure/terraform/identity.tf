@@ -13,7 +13,23 @@ resource "aws_cognito_user_group" "admins" {
   description  = "Stack Atlas administrators"
 }
 
-resource "random_password" "initial_admin" {
+# --- Seed users (temporary, remove after Entra ID integration) ---
+
+locals {
+  seed_users = {
+    chris    = { email = "chris@stack-atlas.com",    name = "Chris",    admin = true }
+    dane     = { email = "dane@stack-atlas.com",     name = "Dane",     admin = true }
+    parmjeet = { email = "parmjeet@stack-atlas.com", name = "Parmjeet", admin = true }
+    uscis    = { email = "uscis@stack-atlas.com",    name = "USCIS",    admin = false }
+    hhs      = { email = "hhs@stack-atlas.com",      name = "HHS",      admin = false }
+  }
+
+  seed_admins = { for k, v in local.seed_users : k => v if v.admin }
+}
+
+resource "random_password" "seed" {
+  for_each = local.seed_users
+
   length      = 16
   special     = false
   min_upper   = 1
@@ -21,21 +37,25 @@ resource "random_password" "initial_admin" {
   min_numeric = 1
 }
 
-resource "aws_cognito_user" "initial_admin" {
+resource "aws_cognito_user" "seed" {
+  for_each = local.seed_users
+
   user_pool_id   = module.cognito.user_pool_id
-  username       = "chris@chris-arsenault.net"
-  password       = random_password.initial_admin.result
+  username       = each.value.email
+  password       = random_password.seed[each.key].result
   message_action = "SUPPRESS"
 
   attributes = {
-    email          = "chris@chris-arsenault.net"
+    email          = each.value.email
     email_verified = "true"
-    name           = "chris"
+    name           = each.value.name
   }
 }
 
-resource "aws_cognito_user_in_group" "initial_admin" {
+resource "aws_cognito_user_in_group" "seed_admins" {
+  for_each = local.seed_admins
+
   user_pool_id = module.cognito.user_pool_id
-  username     = aws_cognito_user.initial_admin.username
+  username     = aws_cognito_user.seed[each.key].username
   group_name   = aws_cognito_user_group.admins.name
 }
