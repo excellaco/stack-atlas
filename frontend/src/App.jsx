@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { categories, items, types } from './data/stackData'
 import { signIn, signOut, getSession, parseIdToken } from './auth'
 import * as api from './api'
@@ -244,9 +244,10 @@ function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminClick }) {
 
 function ProjectSelector({
   token, projects, activeProject, activeSubsystem, subsystems,
-  onSelectProject, onSelectSubsystem, onSave, onLoadProject,
+  onSelectProject, onSelectSubsystem, onLoadProject,
   canEdit, isAdmin, onCreateProject, onDeleteProject,
-  onCreateSubsystem, onDeleteSubsystem, dirty
+  onCreateSubsystem, onDeleteSubsystem, dirty,
+  hasDraft, draftStatus, onCommit, onDiscard
 }) {
   const [showCreate, setShowCreate] = useState(false)
   const [showCreateSub, setShowCreateSub] = useState(false)
@@ -292,9 +293,27 @@ function ProjectSelector({
               Load
             </button>
             {canEdit && (
-              <button type="button" className="primary" onClick={onSave} disabled={!dirty}>
-                {dirty ? 'Save' : 'Saved'}
-              </button>
+              <>
+                {draftStatus === 'saving' && (
+                  <span className="draft-status saving">Saving...</span>
+                )}
+                {draftStatus === 'saved' && !dirty && (
+                  <span className="draft-status saved">Draft saved</span>
+                )}
+                {!hasDraft && !dirty && draftStatus !== 'saving' && (
+                  <span className="draft-status up-to-date">Up to date</span>
+                )}
+                {hasDraft && (
+                  <>
+                    <button type="button" className="primary" onClick={onCommit}>
+                      Commit
+                    </button>
+                    <button type="button" className="ghost danger" onClick={onDiscard}>
+                      Discard
+                    </button>
+                  </>
+                )}
+              </>
             )}
             {isAdmin && (
               <button type="button" className="ghost danger" onClick={() => onDeleteProject(activeProject.id)}>
@@ -467,6 +486,242 @@ function AdminPanel({ token, onClose }) {
   )
 }
 
+// --- Commit Dialog ---
+
+function CommitDialog({ onCommit, onClose }) {
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!message.trim()) return
+    setLoading(true)
+    setError('')
+    try {
+      await onCommit(message.trim())
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Commit failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="admin-overlay" onClick={onClose}>
+      <div className="commit-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-header">
+          <h3>Commit Changes</h3>
+          <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <label className="field">
+            <span>Commit message</span>
+            <input
+              type="text"
+              placeholder="Describe what changed..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              required
+              autoFocus
+            />
+          </label>
+          {error && <div className="auth-error">{error}</div>}
+          <div className="commit-dialog-actions">
+            <button type="submit" className="primary" disabled={loading || !message.trim()}>
+              {loading ? 'Committing...' : 'Commit'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// --- Diff Computation ---
+
+const computeDiff = (prevSnapshot, currSnapshot) => {
+  const prevStack = new Set(prevSnapshot?.stack || [])
+  const currStack = new Set(currSnapshot?.stack || [])
+
+  const stackAdded = [...currStack].filter((id) => !prevStack.has(id))
+  const stackRemoved = [...prevStack].filter((id) => !currStack.has(id))
+
+  const prevSubs = prevSnapshot?.subsystems || {}
+  const currSubs = currSnapshot?.subsystems || {}
+
+  const prevSubIds = new Set(Object.keys(prevSubs))
+  const currSubIds = new Set(Object.keys(currSubs))
+
+  const subsystemsAdded = [...currSubIds]
+    .filter((id) => !prevSubIds.has(id))
+    .map((id) => ({ id, name: currSubs[id]?.name || id }))
+
+  const subsystemsRemoved = [...prevSubIds]
+    .filter((id) => !currSubIds.has(id))
+    .map((id) => ({ id, name: prevSubs[id]?.name || id }))
+
+  const subsystemsChanged = [...currSubIds]
+    .filter((id) => prevSubIds.has(id))
+    .map((id) => {
+      const prev = prevSubs[id] || {}
+      const curr = currSubs[id] || {}
+      const prevAdd = new Set(prev.additions || [])
+      const currAdd = new Set(curr.additions || [])
+      const prevExcl = new Set(prev.exclusions || [])
+      const currExcl = new Set(curr.exclusions || [])
+
+      const additionsAdded = [...currAdd].filter((x) => !prevAdd.has(x))
+      const additionsRemoved = [...prevAdd].filter((x) => !currAdd.has(x))
+      const exclusionsAdded = [...currExcl].filter((x) => !prevExcl.has(x))
+      const exclusionsRemoved = [...prevExcl].filter((x) => !currExcl.has(x))
+
+      if (!additionsAdded.length && !additionsRemoved.length && !exclusionsAdded.length && !exclusionsRemoved.length) {
+        return null
+      }
+      return { id, name: curr.name || id, additionsAdded, additionsRemoved, exclusionsAdded, exclusionsRemoved }
+    })
+    .filter(Boolean)
+
+  return { stackAdded, stackRemoved, subsystemsAdded, subsystemsRemoved, subsystemsChanged }
+}
+
+const resolveItemName = (id) => {
+  const item = itemsById.get(id)
+  return item ? `${item.name} (${item.type})` : id
+}
+
+const formatTimeAgo = (timestamp) => {
+  const diff = Date.now() - new Date(timestamp).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// --- Commit Log ---
+
+function CommitLog({ token, projectId }) {
+  const [commits, setCommits] = useState([])
+  const [expanded, setExpanded] = useState(new Set())
+  const [isOpen, setIsOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!token || !projectId) {
+      setCommits([])
+      return
+    }
+    setLoading(true)
+    api.getCommits(token, projectId)
+      .then(setCommits)
+      .catch(() => setCommits([]))
+      .finally(() => setLoading(false))
+  }, [token, projectId])
+
+  const toggleExpand = (commitId) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(commitId)) next.delete(commitId)
+      else next.add(commitId)
+      return next
+    })
+  }
+
+  if (!commits.length && !loading) return null
+
+  return (
+    <div className="commit-log">
+      <div className="commit-log-header" onClick={() => setIsOpen(!isOpen)}>
+        <h4>History ({commits.length})</h4>
+        <span className="commit-log-toggle">{isOpen ? '−' : '+'}</span>
+      </div>
+      {isOpen && (
+        <div className="commit-log-list">
+          {loading && <div className="diff-empty">Loading...</div>}
+          {commits.map((commit, index) => {
+            const isExpanded = expanded.has(commit.id)
+            const prevSnapshot = index < commits.length - 1 ? commits[index + 1]?.snapshot : null
+            const diff = isExpanded ? computeDiff(prevSnapshot, commit.snapshot) : null
+            const hasChanges = diff && (
+              diff.stackAdded.length || diff.stackRemoved.length ||
+              diff.subsystemsAdded.length || diff.subsystemsRemoved.length ||
+              diff.subsystemsChanged.length
+            )
+
+            return (
+              <div key={commit.id} className="commit-entry">
+                <div className="commit-entry-header" onClick={() => toggleExpand(commit.id)}>
+                  <span className="commit-entry-toggle">{isExpanded ? '▾' : '▸'}</span>
+                  <div className="commit-entry-body">
+                    <div className="commit-entry-message">{commit.message}</div>
+                    <div className="commit-entry-meta">
+                      {commit.author} · {formatTimeAgo(commit.timestamp)}
+                    </div>
+                  </div>
+                </div>
+                {isExpanded && diff && (
+                  <div className="commit-diff">
+                    {!hasChanges && <div className="diff-empty">Initial commit</div>}
+
+                    {(diff.stackAdded.length > 0 || diff.stackRemoved.length > 0) && (
+                      <>
+                        <div className="diff-section">Stack</div>
+                        {diff.stackAdded.map((id) => (
+                          <div key={`+${id}`} className="diff-added">{resolveItemName(id)}</div>
+                        ))}
+                        {diff.stackRemoved.map((id) => (
+                          <div key={`-${id}`} className="diff-removed">{resolveItemName(id)}</div>
+                        ))}
+                      </>
+                    )}
+
+                    {diff.subsystemsAdded.map((sub) => (
+                      <div key={`+sub-${sub.id}`}>
+                        <div className="diff-section">Subsystem: {sub.name}</div>
+                        <div className="diff-added">added</div>
+                      </div>
+                    ))}
+
+                    {diff.subsystemsRemoved.map((sub) => (
+                      <div key={`-sub-${sub.id}`}>
+                        <div className="diff-section">Subsystem: {sub.name}</div>
+                        <div className="diff-removed">removed</div>
+                      </div>
+                    ))}
+
+                    {diff.subsystemsChanged.map((sub) => (
+                      <div key={`~sub-${sub.id}`}>
+                        <div className="diff-section">Subsystem: {sub.name}</div>
+                        {sub.additionsAdded.map((id) => (
+                          <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id)}</div>
+                        ))}
+                        {sub.additionsRemoved.map((id) => (
+                          <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id)}</div>
+                        ))}
+                        {sub.exclusionsAdded.map((id) => (
+                          <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id)}</div>
+                        ))}
+                        {sub.exclusionsRemoved.map((id) => (
+                          <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id)}</div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Main App ---
 
 function App() {
@@ -495,6 +750,14 @@ function App() {
   const [activeSubsystem, setActiveSubsystem] = useState(null)
   const [savedStack, setSavedStack] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
+
+  // Draft/commit state
+  const [hasDraft, setHasDraft] = useState(false)
+  const [draftStatus, setDraftStatus] = useState('idle') // idle | saving | saved
+  const [showCommitDialog, setShowCommitDialog] = useState(false)
+  const [draftSubsystems, setDraftSubsystems] = useState({})
+  const autoSaveTimer = useRef(null)
+  const skipAutoSave = useRef(false)
 
   // Restore session on mount
   useEffect(() => {
@@ -554,72 +817,195 @@ function App() {
     setSubsystems([])
     setActiveSubsystem(null)
     setSavedStack(null)
+    setHasDraft(false)
+    setDraftStatus('idle')
+    setDraftSubsystems({})
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
   }
 
   const handleSelectProject = (projectId) => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     if (!projectId) {
       setActiveProject(null)
       setActiveSubsystem(null)
       setSavedStack(null)
+      setHasDraft(false)
+      setDraftStatus('idle')
+      setDraftSubsystems({})
       return
     }
     const project = projects.find((p) => p.id === projectId)
     setActiveProject(project || null)
     setActiveSubsystem(null)
     setSavedStack(null)
+    setHasDraft(false)
+    setDraftStatus('idle')
+    setDraftSubsystems({})
   }
 
   const handleLoadProject = async () => {
     if (!token || !activeProject) return
+    skipAutoSave.current = true
     try {
+      // Load committed state
       const stack = await api.getStack(token, activeProject.id)
-      if (stack?.items) {
-        setSelectedItems(stack.items)
-        setSavedStack(stack.items)
+      const committedItems = stack?.items || []
+      setSavedStack(committedItems)
+
+      // Load subsystems for draft tracking
+      const subs = await api.listSubsystems(token, activeProject.id)
+      setSubsystems(subs)
+      const subState = {}
+      for (const s of subs) {
+        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
       }
+
+      // Check for existing draft
+      try {
+        const draft = await api.getDraft(token, activeProject.id)
+        if (draft) {
+          setSelectedItems(draft.stack?.items || committedItems)
+          setDraftSubsystems(draft.subsystems || subState)
+          setHasDraft(true)
+          setDraftStatus('saved')
+          skipAutoSave.current = false
+          return
+        }
+      } catch (err) {
+        if (err.message?.includes('423') || err.message?.includes('locked')) {
+          console.warn('Project locked by another user')
+        }
+      }
+
+      // No draft — load committed state
+      setSelectedItems(committedItems)
+      setDraftSubsystems(subState)
+      setHasDraft(false)
+      setDraftStatus('idle')
     } catch (err) {
       console.error('Failed to load stack:', err)
+    } finally {
+      skipAutoSave.current = false
     }
   }
 
-  const handleSave = async () => {
-    if (!token || !activeProject) return
-    if (activeSubsystem) {
-      // Save subsystem additions/exclusions relative to parent
-      const parentItems = savedStack || []
-      const parentSet = new Set(parentItems)
-      const currentSet = new Set(selectedItems)
-      const additions = selectedItems.filter((id) => !parentSet.has(id))
-      const exclusions = parentItems.filter((id) => !currentSet.has(id))
-      await api.updateSubsystem(token, activeProject.id, activeSubsystem.id, {
-        additions,
-        exclusions
+  const performAutoSave = useCallback(async () => {
+    if (!token || !activeProject || skipAutoSave.current) return
+    setDraftStatus('saving')
+    try {
+      // Build current subsystem state
+      const currentSubState = { ...draftSubsystems }
+      if (activeSubsystem) {
+        const parentItems = savedStack || []
+        const parentSet = new Set(parentItems)
+        const currentSet = new Set(selectedItems)
+        currentSubState[activeSubsystem.id] = {
+          name: activeSubsystem.name,
+          additions: selectedItems.filter((id) => !parentSet.has(id)),
+          exclusions: parentItems.filter((id) => !currentSet.has(id))
+        }
+      }
+      await api.saveDraft(token, activeProject.id, {
+        stack: { items: activeSubsystem ? (savedStack || []) : selectedItems },
+        subsystems: currentSubState
       })
-      // Refresh subsystems
+      setHasDraft(true)
+      setDraftStatus('saved')
+      setDraftSubsystems(currentSubState)
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+      setDraftStatus('idle')
+    }
+  }, [token, activeProject, activeSubsystem, selectedItems, savedStack, draftSubsystems])
+
+  const handleCommit = async (message) => {
+    if (!token || !activeProject) return
+    // Trigger a final save before committing
+    await performAutoSave()
+    const commit = await api.commitChanges(token, activeProject.id, { message })
+    // Reload committed state
+    setHasDraft(false)
+    setDraftStatus('idle')
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    skipAutoSave.current = true
+    try {
+      const stack = await api.getStack(token, activeProject.id)
+      setSavedStack(stack?.items || [])
+      setSelectedItems(stack?.items || [])
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
-      const updated = subs.find((s) => s.id === activeSubsystem.id)
-      if (updated) setActiveSubsystem(updated)
-    } else {
-      await api.saveStack(token, activeProject.id, selectedItems)
-      setSavedStack([...selectedItems])
+      const subState = {}
+      for (const s of subs) {
+        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
+      }
+      setDraftSubsystems(subState)
+      setActiveSubsystem(null)
+    } finally {
+      skipAutoSave.current = false
+    }
+    return commit
+  }
+
+  const handleDiscard = async () => {
+    if (!token || !activeProject || !confirm('Discard all uncommitted changes?')) return
+    await api.discardDraft(token, activeProject.id)
+    setHasDraft(false)
+    setDraftStatus('idle')
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    // Reload committed state
+    skipAutoSave.current = true
+    try {
+      const stack = await api.getStack(token, activeProject.id)
+      setSavedStack(stack?.items || [])
+      setSelectedItems(stack?.items || [])
+      const subs = await api.listSubsystems(token, activeProject.id)
+      setSubsystems(subs)
+      const subState = {}
+      for (const s of subs) {
+        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
+      }
+      setDraftSubsystems(subState)
+      setActiveSubsystem(null)
+    } finally {
+      skipAutoSave.current = false
     }
   }
+
+  // Debounced auto-save (2.5s after last change)
+  useEffect(() => {
+    if (!token || !activeProject || !savedStack || skipAutoSave.current) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      performAutoSave()
+    }, 2500)
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  }, [selectedItems, activeProject?.id, token, performAutoSave, savedStack])
 
   const handleSelectSubsystem = async (subId) => {
     if (!subId) {
       setActiveSubsystem(null)
-      // Reload base project stack
-      if (savedStack) setSelectedItems([...savedStack])
+      // When switching back to base, use draft stack if available
+      if (hasDraft) {
+        // Load from draft's base stack
+        const draft = draftSubsystems
+        // The base stack items are in selectedItems when no subsystem active
+        // Reload from savedStack (committed) — the draft auto-save captures the full state
+        if (savedStack) setSelectedItems([...savedStack])
+      } else if (savedStack) {
+        setSelectedItems([...savedStack])
+      }
       return
     }
     const sub = subsystems.find((s) => s.id === subId)
     setActiveSubsystem(sub || null)
-    if (sub && savedStack) {
-      // Compute effective stack: (parent - exclusions) + additions
+    // Load subsystem state from draft if available, otherwise from committed
+    const subData = draftSubsystems[subId] || sub
+    if (subData && savedStack) {
       const parentSet = new Set(savedStack)
-      ;(sub.exclusions || []).forEach((id) => parentSet.delete(id))
-      ;(sub.additions || []).forEach((id) => parentSet.add(id))
+      ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
+      ;(subData.additions || []).forEach((id) => parentSet.add(id))
       setSelectedItems(Array.from(parentSet))
     }
   }
@@ -639,6 +1025,10 @@ function App() {
       setActiveProject(null)
       setActiveSubsystem(null)
       setSavedStack(null)
+      setHasDraft(false)
+      setDraftStatus('idle')
+      setDraftSubsystems({})
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     }
   }
 
@@ -891,7 +1281,6 @@ function App() {
           subsystems={subsystems}
           onSelectProject={handleSelectProject}
           onSelectSubsystem={handleSelectSubsystem}
-          onSave={handleSave}
           onLoadProject={handleLoadProject}
           canEdit={activeProject ? canEditProject(activeProject.id) : false}
           isAdmin={isAdmin}
@@ -900,6 +1289,10 @@ function App() {
           onCreateSubsystem={handleCreateSubsystem}
           onDeleteSubsystem={handleDeleteSubsystem}
           dirty={dirty}
+          hasDraft={hasDraft}
+          draftStatus={draftStatus}
+          onCommit={() => setShowCommitDialog(true)}
+          onDiscard={handleDiscard}
         />
       )}
 
@@ -1156,10 +1549,14 @@ function App() {
           </div>
 
           {activeProject && (
-            <div className="project-context">
-              <strong>{activeProject.name}</strong>
-              {activeSubsystem && <span> / {activeSubsystem.name}</span>}
-            </div>
+            <>
+              <div className="project-context">
+                <strong>{activeProject.name}</strong>
+                {activeSubsystem && <span> / {activeSubsystem.name}</span>}
+                {hasDraft && <span className="draft-badge">Draft</span>}
+              </div>
+              <CommitLog token={token} projectId={activeProject.id} />
+            </>
           )}
 
           {selectedItems.length ? (
@@ -1228,10 +1625,17 @@ function App() {
         <AdminPanel token={token} onClose={() => setShowAdmin(false)} />
       )}
 
+      {showCommitDialog && token && activeProject && (
+        <CommitDialog
+          onCommit={handleCommit}
+          onClose={() => setShowCommitDialog(false)}
+        />
+      )}
+
       <footer className="app-footer">
         <span>Copyright © {new Date().getFullYear()}</span>
-        <a href="https://ahara.io" target="_blank" rel="noreferrer">
-          <img src="/tsonu-combined.png" alt="tsonu" height="14" />
+        <a href="https://www.excella.com" target="_blank" rel="noreferrer">
+          <img src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg" alt="Excella" height="14" />
         </a>
       </footer>
     </div>

@@ -61,7 +61,12 @@ module "api" {
     "PUT /projects/{id}/subsystems/{subId}",
     "DELETE /projects/{id}/subsystems/{subId}",
     "GET /admin/roles",
-    "PUT /admin/roles"
+    "PUT /admin/roles",
+    "GET /projects/{id}/draft",
+    "PUT /projects/{id}/draft",
+    "DELETE /projects/{id}/draft",
+    "POST /projects/{id}/commit",
+    "GET /projects/{id}/commits"
   ]
 
   cors_allow_origins = local.allowed_origins

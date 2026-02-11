@@ -108,3 +108,48 @@ export const putRoles = async (roles) => {
 export const invalidateRolesCache = () => {
   rolesCache = null;
 };
+
+// --- Drafts ---
+
+const LOCK_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+export const getDraft = async (userSub, projectId) => {
+  return readJson(`drafts/${userSub}/${projectId}.json`);
+};
+
+export const getDraftForProject = async (projectId) => {
+  const keys = await listKeys(`drafts/`);
+  for (const key of keys) {
+    if (key.endsWith(`/${projectId}.json`)) {
+      const data = await readJson(key);
+      if (data) return data;
+    }
+  }
+  return null;
+};
+
+export const putDraft = async (userSub, projectId, data) => {
+  await writeJson(`drafts/${userSub}/${projectId}.json`, data);
+};
+
+export const deleteDraft = async (userSub, projectId) => {
+  await deleteKey(`drafts/${userSub}/${projectId}.json`);
+};
+
+export const isLockExpired = (lockedAt) => {
+  if (!lockedAt) return true;
+  return Date.now() - new Date(lockedAt).getTime() > LOCK_EXPIRY_MS;
+};
+
+// --- Commits ---
+
+export const getCommitLog = async (projectId) => {
+  const data = await readJson(`projects/${projectId}/commits.json`);
+  return data || { commits: [] };
+};
+
+export const appendCommit = async (projectId, commit) => {
+  const log = await getCommitLog(projectId);
+  log.commits.push(commit);
+  await writeJson(`projects/${projectId}/commits.json`, log);
+};

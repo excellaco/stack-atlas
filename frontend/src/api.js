@@ -64,3 +64,20 @@ export const getRoles = (token) =>
 
 export const putRoles = (token, roles) =>
   request("/admin/roles", { method: "PUT", token, body: roles });
+
+// Drafts
+export const getDraft = (token, projectId) =>
+  request(`/projects/${encodeURIComponent(projectId)}/draft`, { token });
+
+export const saveDraft = (token, projectId, { stack, subsystems }) =>
+  request(`/projects/${encodeURIComponent(projectId)}/draft`, { method: "PUT", token, body: { stack, subsystems } });
+
+export const discardDraft = (token, projectId) =>
+  request(`/projects/${encodeURIComponent(projectId)}/draft`, { method: "DELETE", token });
+
+// Commits
+export const commitChanges = (token, projectId, { message }) =>
+  request(`/projects/${encodeURIComponent(projectId)}/commit`, { method: "POST", token, body: { message } });
+
+export const getCommits = (token, projectId) =>
+  request(`/projects/${encodeURIComponent(projectId)}/commits`, { token });
