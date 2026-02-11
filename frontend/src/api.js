@@ -82,6 +82,13 @@ export const commitChanges = (token, projectId, { message }) =>
 export const getCommits = (token, projectId) =>
   request(`/projects/${encodeURIComponent(projectId)}/commits`, { token });
 
+// Catalog
+export const getCatalog = (token) =>
+  request("/catalog", { token });
+
+export const putCatalog = (token, catalog) =>
+  request("/admin/catalog", { method: "PUT", token, body: catalog });
+
 // Admin - Users
 export const listUsers = (token) =>
   request("/admin/users", { token });

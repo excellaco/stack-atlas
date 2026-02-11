@@ -70,7 +70,9 @@ module "api" {
     "GET /admin/users",
     "GET /admin/locks",
     "DELETE /admin/locks/{projectId}/{userSub}",
-    "GET /admin/activity"
+    "GET /admin/activity",
+    "GET /catalog",
+    "PUT /admin/catalog"
   ]
 
   cors_allow_origins = local.allowed_origins

@@ -6,6 +6,7 @@ import {
   getStack, putStack, deleteProjectData,
   listSubsystems, getSubsystem, putSubsystem, deleteSubsystem,
   getRoles, putRoles,
+  getCatalog, putCatalog,
   getDraft, getDraftForProject, putDraft, deleteDraft, isLockExpired,
   getCommitLog, appendCommit,
   getUserRegistry, ensureUserInRegistry,
@@ -43,7 +44,7 @@ const slugify = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64);
 
 const authenticate = async (auth) => {
-  const user = await authenticate(auth);
+  const user = await verifyAuth(auth);
   // Fire-and-forget user registry update
   ensureUserInRegistry(user).catch(() => {});
   return user;
@@ -241,6 +242,32 @@ export const handler = async (event) => {
       const roles = { admins: body.admins, editors: body.editors };
       await putRoles(roles);
       return jsonResponse(200, { data: roles }, cors);
+    }
+
+    // --- Catalog ---
+    if (method === "GET" && path === "/catalog") {
+      const user = await authenticate(auth);
+      const catalog = await getCatalog();
+      if (!catalog) return jsonResponse(404, { message: "No catalog published" }, cors);
+      return jsonResponse(200, { data: catalog }, cors);
+    }
+
+    if (method === "PUT" && path === "/admin/catalog") {
+      const user = await authenticate(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const body = parseBody(event);
+      if (!Array.isArray(body.categories) || !Array.isArray(body.types) ||
+          !Array.isArray(body.items) || typeof body.descriptions !== "object") {
+        return jsonResponse(400, { message: "Catalog must have categories, types, items (arrays) and descriptions (object)" }, cors);
+      }
+      const validItem = (i) => i && typeof i.id === "string" && typeof i.name === "string" &&
+        typeof i.category === "string" && typeof i.type === "string";
+      if (!body.items.every(validItem)) {
+        return jsonResponse(400, { message: "Each item must have id, name, category, and type" }, cors);
+      }
+      const catalog = { categories: body.categories, types: body.types, descriptions: body.descriptions, items: body.items };
+      await putCatalog(catalog);
+      return jsonResponse(200, { data: catalog }, cors);
     }
 
     // --- Admin: Users ---

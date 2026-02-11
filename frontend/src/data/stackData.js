@@ -216,7 +216,7 @@ const buildTags = (item) => {
   return Array.from(tags).sort((a, b) => a.localeCompare(b))
 }
 
-const descriptionById = {
+export const descriptionById = {
   'dnn':
     'Multi-layer neural architectures for learning complex patterns; used for NLP, vision, and anomaly detection workloads.',
   'nlp':
@@ -665,7 +665,7 @@ const descriptionById = {
     'Browser-based IDE tied to cloud instances; used for remote development.'
 }
 
-const rawItems = [
+export const rawItems = [
   {
     id: 'dnn',
     name: 'Deep Neural Networks',
@@ -2258,8 +2258,11 @@ const rawItems = [
   }
 ]
 
-export const items = rawItems.map((item) => ({
-  ...item,
-  description: descriptionById[item.id],
-  tags: buildTags(item)
-}))
+export const enrichItems = (rawItemList, descriptions) =>
+  rawItemList.map((item) => ({
+    ...item,
+    description: descriptions[item.id],
+    tags: buildTags(item)
+  }))
+
+export const items = enrichItems(rawItems, descriptionById)

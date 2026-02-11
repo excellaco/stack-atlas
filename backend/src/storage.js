@@ -109,6 +109,22 @@ export const invalidateRolesCache = () => {
   rolesCache = null;
 };
 
+// --- Catalog ---
+
+let catalogCache = null;
+
+export const getCatalog = async () => {
+  if (catalogCache) return catalogCache;
+  const data = await readJson("config/catalog.json");
+  catalogCache = data;
+  return catalogCache;
+};
+
+export const putCatalog = async (catalog) => {
+  await writeJson("config/catalog.json", catalog);
+  catalogCache = catalog;
+};
+
 // --- Drafts ---
 
 const LOCK_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes

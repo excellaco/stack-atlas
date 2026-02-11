@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { categories, items, types } from './data/stackData'
+import {
+  categories as staticCategories,
+  items as staticItems,
+  types as staticTypes,
+  rawItems as staticRawItems,
+  descriptionById as staticDescriptions,
+  enrichItems
+} from './data/stackData'
 import { signIn, signOut, getSession, parseIdToken } from './auth'
 import * as api from './api'
 import './App.css'
-
-const itemsById = new Map(items.map((item) => [item.id, item]))
-const categoryById = new Map(categories.map((category) => [category.id, category]))
 
 const technologyTypes = new Set([
   'Capability',
@@ -28,27 +32,10 @@ const toolTypes = new Set([
   'DataStore'
 ])
 
-const categoryCounts = items.reduce((acc, item) => {
-  acc[item.category] = (acc[item.category] || 0) + 1
-  return acc
-}, {})
-
-const tagCounts = items.reduce((acc, item) => {
-  ;(item.tags || []).forEach((tag) => {
-    acc[tag] = (acc[tag] || 0) + 1
-  })
-  return acc
-}, {})
-
-const tagList = Object.entries(tagCounts)
-  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-  .slice(0, 10)
-  .map(([tag]) => tag)
-
 const toggleInList = (list, value) =>
   list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
 
-const buildSearchText = (item) => {
+const buildSearchText = (item, categoryById) => {
   const parts = [
     item.name,
     item.type,
@@ -91,7 +78,7 @@ const flattenTree = (nodes, depth = 0) =>
     ...flattenTree(node.children, depth + 1)
   ])
 
-const buildExportData = (selectedIds) => {
+const buildExportData = (selectedIds, itemsById, categories) => {
   const selectedItems = selectedIds
     .map((id) => itemsById.get(id))
     .filter(Boolean)
@@ -157,7 +144,7 @@ const formatExport = (data, format) => {
   return lines.join('\n')
 }
 
-const getParentName = (item) => {
+const getParentName = (item, itemsById) => {
   const parentId = item.parents?.[0]
   if (!parentId) return null
   return itemsById.get(parentId)?.name
@@ -416,9 +403,66 @@ function UserPicker({ users, onSelect, exclude }) {
   )
 }
 
+// --- Catalog Item Form ---
+
+function CatalogItemForm({ item, description: initialDesc, categories, types, onSave, onCancel }) {
+  const [id, setId] = useState(item?.id || '')
+  const [name, setName] = useState(item?.name || '')
+  const [category, setCategory] = useState(item?.category || categories[0]?.id || '')
+  const [type, setType] = useState(item?.type || types[0] || '')
+  const [description, setDescription] = useState(initialDesc || '')
+  const [synonyms, setSynonyms] = useState((item?.synonyms || []).join(', '))
+  const [parents, setParents] = useState((item?.parents || []).join(', '))
+  const [commonWith, setCommonWith] = useState((item?.commonWith || []).join(', '))
+  const [tags, setTags] = useState((item?.tags || []).join(', '))
+
+  useEffect(() => {
+    if (!item && name) {
+      setId(name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+    }
+  }, [name, item])
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const parsed = {
+      id: id.trim(),
+      name: name.trim(),
+      category,
+      type,
+      ...(synonyms.trim() ? { synonyms: synonyms.split(',').map((s) => s.trim()).filter(Boolean) } : {}),
+      ...(parents.trim() ? { parents: parents.split(',').map((s) => s.trim()).filter(Boolean) } : {}),
+      ...(commonWith.trim() ? { commonWith: commonWith.split(',').map((s) => s.trim()).filter(Boolean) } : {}),
+      ...(tags.trim() ? { tags: tags.split(',').map((s) => s.trim()).filter(Boolean) } : {})
+    }
+    onSave(parsed, description.trim())
+  }
+
+  return (
+    <form className="catalog-form" onSubmit={handleSubmit}>
+      <input placeholder="ID" value={id} onChange={(e) => setId(e.target.value)} required />
+      <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+      <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <select value={type} onChange={(e) => setType(e.target.value)}>
+        {types.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+      <input placeholder="Synonyms (comma-separated)" value={synonyms} onChange={(e) => setSynonyms(e.target.value)} />
+      <input placeholder="Parents (comma-separated IDs)" value={parents} onChange={(e) => setParents(e.target.value)} />
+      <input placeholder="Common with (comma-separated IDs)" value={commonWith} onChange={(e) => setCommonWith(e.target.value)} />
+      <input placeholder="Tags (comma-separated)" value={tags} onChange={(e) => setTags(e.target.value)} />
+      <div className="catalog-form-actions">
+        <button type="submit" className="primary" disabled={!id.trim() || !name.trim()}>Save</button>
+        <button type="button" className="ghost" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  )
+}
+
 // --- Admin Panel ---
 
-function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject }) {
+function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject, itemsById, catalogCategories, catalogTypes, catalogRawItems, catalogDescriptions, catalogSource, onCatalogPublished }) {
   const [tab, setTab] = useState('roles')
   const [roles, setRoles] = useState(null)
   const [users, setUsers] = useState(null)
@@ -520,8 +564,142 @@ function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject
 
   if (loading) return <div className="admin-overlay"><div className="admin-panel"><p>Loading...</p></div></div>
 
+  const handleDownloadCatalog = () => {
+    const catalog = { categories: catalogCategories, types: catalogTypes, descriptions: catalogDescriptions, items: catalogRawItems }
+    const blob = new Blob([JSON.stringify(catalog, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'stack-catalog.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Catalog tab state
+  const [editCategories, setEditCategories] = useState(catalogCategories)
+  const [editItems, setEditItems] = useState(catalogRawItems)
+  const [editTypes, setEditTypes] = useState(catalogTypes)
+  const [editDescriptions, setEditDescriptions] = useState(catalogDescriptions)
+  const [catalogDirty, setCatalogDirty] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [itemSearch, setItemSearch] = useState('')
+  const [itemCategoryFilter, setItemCategoryFilter] = useState('')
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    setEditCategories(catalogCategories)
+    setEditItems(catalogRawItems)
+    setEditTypes(catalogTypes)
+    setEditDescriptions(catalogDescriptions)
+    setCatalogDirty(false)
+  }, [catalogCategories, catalogRawItems, catalogTypes, catalogDescriptions])
+
+  const handlePublishCatalog = async () => {
+    if (!confirm('Publish catalog changes? This will update the catalog for all users.')) return
+    setSaving(true)
+    try {
+      const catalog = { categories: editCategories, types: editTypes, descriptions: editDescriptions, items: editItems }
+      await api.putCatalog(token, catalog)
+      onCatalogPublished(catalog)
+      setCatalogDirty(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUploadCatalog = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (!Array.isArray(data.categories) || !Array.isArray(data.types) || !Array.isArray(data.items) || typeof data.descriptions !== 'object') {
+          setError('Invalid catalog format')
+          return
+        }
+        setEditCategories(data.categories)
+        setEditTypes(data.types)
+        setEditItems(data.items)
+        setEditDescriptions(data.descriptions)
+        setCatalogDirty(true)
+        setError('')
+      } catch { setError('Invalid JSON file') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleSeedFromStatic = () => {
+    setEditCategories(staticCategories)
+    setEditTypes(staticTypes)
+    setEditItems(staticRawItems)
+    setEditDescriptions(staticDescriptions)
+    setCatalogDirty(true)
+  }
+
+  const handleSaveCatalogItem = (itemData, description) => {
+    if (editingItem?.id && editingItem.id !== itemData.id) {
+      // Renaming: remove old, add new
+      setEditItems((prev) => [...prev.filter((i) => i.id !== editingItem.id), itemData])
+      setEditDescriptions((prev) => {
+        const next = { ...prev }
+        delete next[editingItem.id]
+        if (description) next[itemData.id] = description
+        return next
+      })
+    } else {
+      setEditItems((prev) => {
+        const idx = prev.findIndex((i) => i.id === itemData.id)
+        if (idx >= 0) { const next = [...prev]; next[idx] = itemData; return next }
+        return [...prev, itemData]
+      })
+      if (description) setEditDescriptions((prev) => ({ ...prev, [itemData.id]: description }))
+    }
+    setCatalogDirty(true)
+    setEditingItem(null)
+  }
+
+  const handleDeleteCatalogItem = (itemId) => {
+    if (!confirm(`Delete item "${itemId}"? It may be referenced by existing projects.`)) return
+    setEditItems((prev) => prev.filter((i) => i.id !== itemId))
+    setEditDescriptions((prev) => { const next = { ...prev }; delete next[itemId]; return next })
+    setCatalogDirty(true)
+  }
+
+  const handleSaveCatalogCategory = (catData) => {
+    setEditCategories((prev) => {
+      const idx = prev.findIndex((c) => c.id === catData.id)
+      if (idx >= 0) { const next = [...prev]; next[idx] = catData; return next }
+      return [...prev, catData]
+    })
+    setCatalogDirty(true)
+    setEditingCategory(null)
+  }
+
+  const handleDeleteCatalogCategory = (catId) => {
+    const count = editItems.filter((i) => i.category === catId).length
+    if (count > 0 && !confirm(`Category has ${count} items. Delete anyway?`)) return
+    setEditCategories((prev) => prev.filter((c) => c.id !== catId))
+    setCatalogDirty(true)
+  }
+
+  const filteredEditItems = useMemo(() => {
+    let result = editItems
+    if (itemCategoryFilter) result = result.filter((i) => i.category === itemCategoryFilter)
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase()
+      result = result.filter((i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name))
+  }, [editItems, itemCategoryFilter, itemSearch])
+
   const tabs = [
     { id: 'roles', label: 'Roles' },
+    { id: 'catalog', label: 'Catalog' },
     { id: 'projects', label: 'Projects' },
     { id: 'locks', label: 'Locks' },
     { id: 'activity', label: 'Activity' }
@@ -532,7 +710,10 @@ function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject
       <div className="admin-panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-header">
           <h3>Admin</h3>
-          <button type="button" className="ghost" onClick={onClose}>Close</button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" className="ghost" onClick={handleDownloadCatalog}>Download Catalog</button>
+            <button type="button" className="ghost" onClick={onClose}>Close</button>
+          </div>
         </div>
 
         <div className="admin-tabs">
@@ -601,6 +782,88 @@ function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject
                   />
                 )}
               </div>
+            </section>
+          </>
+        )}
+
+        {tab === 'catalog' && (
+          <>
+            <section className="admin-section">
+              <div className="catalog-actions">
+                <button type="button" className={catalogDirty ? 'primary' : 'ghost'} onClick={handlePublishCatalog} disabled={!catalogDirty || saving}>
+                  {saving ? 'Publishing...' : 'Publish to S3'}
+                </button>
+                <button type="button" className="ghost" onClick={() => fileInputRef.current?.click()}>Upload JSON</button>
+                <button type="button" className="ghost" onClick={handleSeedFromStatic}>Seed from Static</button>
+                <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleUploadCatalog} />
+                <span className="catalog-source-badge">{catalogSource === 'api' ? 'S3' : 'Static'}{catalogDirty ? ' *' : ''}</span>
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <h4>Categories ({editCategories.length})</h4>
+              {editingCategory !== null && (
+                <div className="catalog-form">
+                  <input placeholder="ID (e.g. ai-ml)" value={editingCategory.id || ''} onChange={(e) => setEditingCategory({ ...editingCategory, id: e.target.value })} />
+                  <input placeholder="Name" value={editingCategory.name || ''} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} />
+                  <input placeholder="Description" value={editingCategory.description || ''} onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })} />
+                  <input type="color" value={editingCategory.color || '#6b7280'} onChange={(e) => setEditingCategory({ ...editingCategory, color: e.target.value })} />
+                  <div className="catalog-form-actions">
+                    <button type="button" className="primary" onClick={() => handleSaveCatalogCategory(editingCategory)} disabled={!editingCategory.id?.trim() || !editingCategory.name?.trim()}>Save</button>
+                    <button type="button" className="ghost" onClick={() => setEditingCategory(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              <div className="admin-table">
+                {editCategories.map((cat) => (
+                  <div key={cat.id} className="admin-table-row">
+                    <div className="admin-table-main">
+                      <span className="catalog-color-dot" style={{ background: cat.color }} />
+                      <strong>{cat.name}</strong>
+                      {cat.description && <span className="admin-table-desc">{cat.description}</span>}
+                    </div>
+                    <span className="admin-table-meta">{editItems.filter((i) => i.category === cat.id).length} items</span>
+                    <button type="button" className="ghost" onClick={() => setEditingCategory({ ...cat })}>Edit</button>
+                    <button type="button" className="ghost danger" onClick={() => handleDeleteCatalogCategory(cat.id)}>Delete</button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="ghost" onClick={() => setEditingCategory({ id: '', name: '', description: '', color: '#6b7280' })}>+ Add Category</button>
+            </section>
+
+            <section className="admin-section">
+              <h4>Items ({editItems.length})</h4>
+              <div className="catalog-search">
+                <input placeholder="Search items..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} />
+                <select value={itemCategoryFilter} onChange={(e) => setItemCategoryFilter(e.target.value)}>
+                  <option value="">All categories</option>
+                  {editCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              {editingItem !== null && (
+                <CatalogItemForm
+                  item={editingItem.id ? editingItem : null}
+                  description={editingItem.id ? editDescriptions[editingItem.id] || '' : ''}
+                  categories={editCategories}
+                  types={editTypes}
+                  onSave={handleSaveCatalogItem}
+                  onCancel={() => setEditingItem(null)}
+                />
+              )}
+              <div className="admin-table">
+                {filteredEditItems.map((item) => (
+                  <div key={item.id} className="admin-table-row">
+                    <div className="admin-table-main">
+                      <strong>{item.name}</strong>
+                      <span className="admin-table-desc">{item.type} · {editCategories.find((c) => c.id === item.category)?.name || item.category}</span>
+                    </div>
+                    <span className="admin-table-meta">{item.id}</span>
+                    <button type="button" className="ghost" onClick={() => setEditingItem({ ...item })}>Edit</button>
+                    <button type="button" className="ghost danger" onClick={() => handleDeleteCatalogItem(item.id)}>Delete</button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="ghost" onClick={() => setEditingItem({ id: '', name: '', category: editCategories[0]?.id || '', type: editTypes[0] || '' })}>+ Add Item</button>
             </section>
           </>
         )}
@@ -694,10 +957,10 @@ function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject
                             <>
                               <div className="diff-section">Stack</div>
                               {diff.stackAdded.map((id) => (
-                                <div key={`+${id}`} className="diff-added">{resolveItemName(id)}</div>
+                                <div key={`+${id}`} className="diff-added">{resolveItemName(id, itemsById)}</div>
                               ))}
                               {diff.stackRemoved.map((id) => (
-                                <div key={`-${id}`} className="diff-removed">{resolveItemName(id)}</div>
+                                <div key={`-${id}`} className="diff-removed">{resolveItemName(id, itemsById)}</div>
                               ))}
                             </>
                           )}
@@ -717,16 +980,16 @@ function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject
                             <div key={`~sub-${sub.id}`}>
                               <div className="diff-section">Subsystem: {sub.name}</div>
                               {sub.additionsAdded.map((id) => (
-                                <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id)}</div>
+                                <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id, itemsById)}</div>
                               ))}
                               {sub.additionsRemoved.map((id) => (
-                                <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id)}</div>
+                                <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id, itemsById)}</div>
                               ))}
                               {sub.exclusionsAdded.map((id) => (
-                                <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id)}</div>
+                                <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id, itemsById)}</div>
                               ))}
                               {sub.exclusionsRemoved.map((id) => (
-                                <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id)}</div>
+                                <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id, itemsById)}</div>
                               ))}
                             </div>
                           ))}
@@ -847,7 +1110,7 @@ const computeDiff = (prevSnapshot, currSnapshot) => {
   return { stackAdded, stackRemoved, subsystemsAdded, subsystemsRemoved, subsystemsChanged }
 }
 
-const resolveItemName = (id) => {
+const resolveItemName = (id, itemsById) => {
   const item = itemsById.get(id)
   return item ? `${item.name} (${item.type})` : id
 }
@@ -865,7 +1128,7 @@ const formatTimeAgo = (timestamp) => {
 
 // --- Commit Log ---
 
-function CommitLog({ token, projectId }) {
+function CommitLog({ token, projectId, itemsById }) {
   const [commits, setCommits] = useState([])
   const [expanded, setExpanded] = useState(new Set())
   const [isOpen, setIsOpen] = useState(false)
@@ -932,10 +1195,10 @@ function CommitLog({ token, projectId }) {
                       <>
                         <div className="diff-section">Stack</div>
                         {diff.stackAdded.map((id) => (
-                          <div key={`+${id}`} className="diff-added">{resolveItemName(id)}</div>
+                          <div key={`+${id}`} className="diff-added">{resolveItemName(id, itemsById)}</div>
                         ))}
                         {diff.stackRemoved.map((id) => (
-                          <div key={`-${id}`} className="diff-removed">{resolveItemName(id)}</div>
+                          <div key={`-${id}`} className="diff-removed">{resolveItemName(id, itemsById)}</div>
                         ))}
                       </>
                     )}
@@ -958,16 +1221,16 @@ function CommitLog({ token, projectId }) {
                       <div key={`~sub-${sub.id}`}>
                         <div className="diff-section">Subsystem: {sub.name}</div>
                         {sub.additionsAdded.map((id) => (
-                          <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id)}</div>
+                          <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id, itemsById)}</div>
                         ))}
                         {sub.additionsRemoved.map((id) => (
-                          <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id)}</div>
+                          <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id, itemsById)}</div>
                         ))}
                         {sub.exclusionsAdded.map((id) => (
-                          <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id)}</div>
+                          <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id, itemsById)}</div>
                         ))}
                         {sub.exclusionsRemoved.map((id) => (
-                          <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id)}</div>
+                          <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id, itemsById)}</div>
                         ))}
                       </div>
                     ))}
@@ -1019,6 +1282,38 @@ function App() {
   const autoSaveTimer = useRef(null)
   const skipAutoSave = useRef(false)
 
+  // Catalog state — initialized from static data, overridden by API
+  const [catalogCategories, setCatalogCategories] = useState(staticCategories)
+  const [catalogTypes, setCatalogTypes] = useState(staticTypes)
+  const [catalogRawItems, setCatalogRawItems] = useState(staticRawItems)
+  const [catalogDescriptions, setCatalogDescriptions] = useState(staticDescriptions)
+  const [catalogSource, setCatalogSource] = useState('static')
+
+  const catalogItems = useMemo(
+    () => enrichItems(catalogRawItems, catalogDescriptions),
+    [catalogRawItems, catalogDescriptions]
+  )
+  const itemsById = useMemo(
+    () => new Map(catalogItems.map((item) => [item.id, item])),
+    [catalogItems]
+  )
+  const categoryById = useMemo(
+    () => new Map(catalogCategories.map((c) => [c.id, c])),
+    [catalogCategories]
+  )
+  const categoryCounts = useMemo(
+    () => catalogItems.reduce((acc, item) => { acc[item.category] = (acc[item.category] || 0) + 1; return acc }, {}),
+    [catalogItems]
+  )
+  const tagCounts = useMemo(
+    () => catalogItems.reduce((acc, item) => { (item.tags || []).forEach((tag) => { acc[tag] = (acc[tag] || 0) + 1 }); return acc }, {}),
+    [catalogItems]
+  )
+  const tagList = useMemo(
+    () => Object.entries(tagCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 10).map(([tag]) => tag),
+    [tagCounts]
+  )
+
   // Restore session on mount
   useEffect(() => {
     getSession().then((session) => {
@@ -1029,6 +1324,20 @@ function App() {
       }
     }).catch(() => {}).finally(() => setAuthLoading(false))
   }, [])
+
+  // Load catalog from API when authenticated
+  useEffect(() => {
+    if (!token) return
+    api.getCatalog(token)
+      .then((catalog) => {
+        setCatalogCategories(catalog.categories)
+        setCatalogTypes(catalog.types)
+        setCatalogRawItems(catalog.items)
+        setCatalogDescriptions(catalog.descriptions)
+        setCatalogSource('api')
+      })
+      .catch(() => setCatalogSource('static'))
+  }, [token])
 
   // Load projects when authenticated
   useEffect(() => {
@@ -1346,7 +1655,7 @@ function App() {
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
 
-    const baseMatches = items.filter((item) => {
+    const baseMatches = catalogItems.filter((item) => {
       if (selectedCategories.length && !selectedCategories.includes(item.category)) {
         return false
       }
@@ -1360,7 +1669,7 @@ function App() {
         return false
       }
       if (!q) return true
-      return buildSearchText(item).includes(q)
+      return buildSearchText(item, categoryById).includes(q)
     })
 
     const ids = new Set(baseMatches.map((item) => item.id))
@@ -1374,11 +1683,11 @@ function App() {
       })
     }
 
-    return items.filter((item) => ids.has(item.id))
-  }, [query, selectedCategories, selectedTypes, selectedTags, viewMode])
+    return catalogItems.filter((item) => ids.has(item.id))
+  }, [query, selectedCategories, selectedTypes, selectedTags, viewMode, catalogItems, categoryById, itemsById])
 
   const sections = useMemo(() => {
-    return categories
+    return catalogCategories
       .map((category) => {
         const categoryItems = filteredItems.filter(
           (item) => item.category === category.id
@@ -1401,24 +1710,24 @@ function App() {
   }, [filteredItems, viewMode])
 
   const selectedByCategory = useMemo(() => {
-    return categories
+    return catalogCategories
       .map((category) => {
-        const categoryItems = selectedItems
+        const catItems = selectedItems
           .map((id) => itemsById.get(id))
           .filter(Boolean)
           .filter((item) => item.category === category.id)
           .sort((a, b) => a.name.localeCompare(b.name))
 
-        if (!categoryItems.length) return null
+        if (!catItems.length) return null
 
-        return { category, items: categoryItems }
+        return { category, items: catItems }
       })
       .filter(Boolean)
-  }, [selectedItems])
+  }, [selectedItems, catalogCategories, itemsById])
 
   const exportData = useMemo(
-    () => buildExportData(selectedItems),
-    [selectedItems]
+    () => buildExportData(selectedItems, itemsById, catalogCategories),
+    [selectedItems, itemsById, catalogCategories]
   )
 
   const exportText = useMemo(
@@ -1481,7 +1790,7 @@ function App() {
               Reset filters
             </button>
             <div className="hero-stat">
-              <span>{items.length} items</span>
+              <span>{catalogItems.length} items</span>
               <span>{selectedItems.length} selected</span>
             </div>
           </div>
@@ -1589,7 +1898,7 @@ function App() {
             </div>
             {isCategoriesOpen && (
               <div className="chip-grid">
-                {categories.map((category) => (
+                {catalogCategories.map((category) => (
                   <button
                     key={category.id}
                     type="button"
@@ -1627,7 +1936,7 @@ function App() {
             </div>
             {isTypesOpen && (
               <div className="chip-grid">
-                {types.map((type) => (
+                {catalogTypes.map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -1699,7 +2008,7 @@ function App() {
                 {section.items.map(({ item, depth }, index) => {
                   const isSelected = selectedSet.has(item.id)
                   const isInherited = inheritedSet.has(item.id)
-                  const parentName = getParentName(item)
+                  const parentName = getParentName(item, itemsById)
                   const commonItems = (item.commonWith || [])
                     .map((id) => itemsById.get(id))
                     .filter(Boolean)
@@ -1815,7 +2124,7 @@ function App() {
                 {activeSubsystem && <span> / {activeSubsystem.name}</span>}
                 {hasDraft && <span className="draft-badge">Draft</span>}
               </div>
-              <CommitLog token={token} projectId={activeProject.id} />
+              <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} />
             </>
           )}
 
@@ -1888,6 +2197,19 @@ function App() {
           onClose={() => setShowAdmin(false)}
           onCreateProject={handleCreateProject}
           onDeleteProject={handleDeleteProject}
+          itemsById={itemsById}
+          catalogCategories={catalogCategories}
+          catalogTypes={catalogTypes}
+          catalogRawItems={catalogRawItems}
+          catalogDescriptions={catalogDescriptions}
+          catalogSource={catalogSource}
+          onCatalogPublished={(catalog) => {
+            setCatalogCategories(catalog.categories)
+            setCatalogTypes(catalog.types)
+            setCatalogRawItems(catalog.items)
+            setCatalogDescriptions(catalog.descriptions)
+            setCatalogSource('api')
+          }}
         />
       )}
 
