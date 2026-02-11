@@ -375,20 +375,83 @@ function ProjectSelector({
   )
 }
 
+// --- User Picker ---
+
+function UserPicker({ users, onSelect, exclude }) {
+  const [query, setQuery] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+
+  const excludeSet = new Set((exclude || []).map((e) => typeof e === 'string' ? e : e.sub))
+  const entries = Object.entries(users || {})
+    .filter(([sub]) => !excludeSet.has(sub))
+    .filter(([, u]) => !query || u.email?.toLowerCase().includes(query.toLowerCase()) || u.name?.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 10)
+
+  return (
+    <div className="user-picker">
+      <input
+        type="text"
+        placeholder="Search users..."
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+      />
+      {isOpen && entries.length > 0 && (
+        <div className="user-picker-dropdown">
+          {entries.map(([sub, u]) => (
+            <button
+              key={sub}
+              type="button"
+              className="user-picker-option"
+              onMouseDown={() => { onSelect({ sub, email: u.email }); setQuery(''); setIsOpen(false) }}
+            >
+              <span className="user-picker-email">{u.email}</span>
+              {u.name && <span className="user-picker-name">{u.name}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Admin Panel ---
 
-function AdminPanel({ token, onClose }) {
+function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject }) {
+  const [tab, setTab] = useState('roles')
   const [roles, setRoles] = useState(null)
+  const [users, setUsers] = useState(null)
+  const [locks, setLocks] = useState([])
+  const [activity, setActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [newAdmin, setNewAdmin] = useState('')
   const [newEditorProject, setNewEditorProject] = useState('')
-  const [newEditorSub, setNewEditorSub] = useState('')
+  const [expandedCommits, setExpandedCommits] = useState(new Set())
+
+  // Project create state
+  const [showCreate, setShowCreate] = useState(false)
+  const [newProjName, setNewProjName] = useState('')
+  const [newProjDesc, setNewProjDesc] = useState('')
 
   useEffect(() => {
-    api.getRoles(token).then(setRoles).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    Promise.all([
+      api.getRoles(token).catch(() => ({ admins: [], editors: {} })),
+      api.listUsers(token).catch(() => ({}))
+    ]).then(([r, u]) => { setRoles(r); setUsers(u) })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
   }, [token])
+
+  useEffect(() => {
+    if (tab === 'locks') {
+      api.listLocks(token).then(setLocks).catch(() => setLocks([]))
+    }
+    if (tab === 'activity') {
+      api.getActivity(token).then(setActivity).catch(() => setActivity([]))
+    }
+  }, [tab, token])
 
   const save = async (updated) => {
     setSaving(true)
@@ -403,82 +466,279 @@ function AdminPanel({ token, onClose }) {
     }
   }
 
-  const addAdmin = () => {
-    if (!newAdmin.trim() || !roles) return
-    const updated = { ...roles, admins: [...new Set([...roles.admins, newAdmin.trim()])] }
-    save(updated)
-    setNewAdmin('')
+  const addAdmin = (user) => {
+    if (!roles) return
+    if (roles.admins.some((a) => a.sub === user.sub)) return
+    save({ ...roles, admins: [...roles.admins, user] })
   }
 
   const removeAdmin = (sub) => {
     if (!roles) return
-    save({ ...roles, admins: roles.admins.filter((a) => a !== sub) })
+    save({ ...roles, admins: roles.admins.filter((a) => a.sub !== sub) })
   }
 
-  const addEditor = () => {
-    if (!newEditorProject.trim() || !newEditorSub.trim() || !roles) return
+  const addEditor = (user) => {
+    if (!newEditorProject || !roles) return
     const editors = { ...roles.editors }
-    const list = editors[newEditorProject.trim()] || []
-    editors[newEditorProject.trim()] = [...new Set([...list, newEditorSub.trim()])]
+    const list = editors[newEditorProject] || []
+    if (list.some((e) => e.sub === user.sub)) return
+    editors[newEditorProject] = [...list, user]
     save({ ...roles, editors })
-    setNewEditorSub('')
   }
 
   const removeEditor = (projectId, sub) => {
     if (!roles) return
     const editors = { ...roles.editors }
-    editors[projectId] = (editors[projectId] || []).filter((e) => e !== sub)
+    editors[projectId] = (editors[projectId] || []).filter((e) => e.sub !== sub)
     if (!editors[projectId].length) delete editors[projectId]
     save({ ...roles, editors })
   }
 
+  const handleBreakLock = async (projectId, userSub) => {
+    if (!confirm('Break this lock? The user\'s draft will be discarded.')) return
+    await api.breakLock(token, projectId, userSub)
+    setLocks((prev) => prev.filter((l) => !(l.projectId === projectId && l.userSub === userSub)))
+  }
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault()
+    if (!newProjName.trim()) return
+    await onCreateProject(newProjName.trim(), newProjDesc.trim())
+    setNewProjName('')
+    setNewProjDesc('')
+    setShowCreate(false)
+  }
+
+  const toggleCommitExpand = (id) => {
+    setExpandedCommits((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   if (loading) return <div className="admin-overlay"><div className="admin-panel"><p>Loading...</p></div></div>
+
+  const tabs = [
+    { id: 'roles', label: 'Roles' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'locks', label: 'Locks' },
+    { id: 'activity', label: 'Activity' }
+  ]
 
   return (
     <div className="admin-overlay" onClick={onClose}>
       <div className="admin-panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-header">
-          <h3>Admin: Roles</h3>
+          <h3>Admin</h3>
           <button type="button" className="ghost" onClick={onClose}>Close</button>
+        </div>
+
+        <div className="admin-tabs">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`admin-tab${tab === t.id ? ' active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {error && <div className="auth-error">{error}</div>}
 
-        <section className="admin-section">
-          <h4>Admins (Cognito sub IDs)</h4>
-          <div className="admin-list">
-            {roles?.admins.map((sub) => (
-              <div key={sub} className="admin-list-item">
-                <span className="admin-sub">{sub}</span>
-                <button type="button" className="ghost danger" onClick={() => removeAdmin(sub)}>Remove</button>
+        {tab === 'roles' && (
+          <>
+            <section className="admin-section">
+              <h4>Admins</h4>
+              <div className="admin-list">
+                {roles?.admins.map((entry) => {
+                  const email = typeof entry === 'string' ? entry : entry.email
+                  const sub = typeof entry === 'string' ? entry : entry.sub
+                  return (
+                    <div key={sub} className="admin-list-item">
+                      <span className="admin-email">{email}</span>
+                      <button type="button" className="ghost danger" onClick={() => removeAdmin(sub)}>Remove</button>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-          <div className="admin-add-row">
-            <input placeholder="Cognito sub" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} />
-            <button type="button" className="ghost" onClick={addAdmin}>Add</button>
-          </div>
-        </section>
+              <UserPicker users={users} exclude={roles?.admins} onSelect={addAdmin} />
+            </section>
 
-        <section className="admin-section">
-          <h4>Project Editors</h4>
-          {roles && Object.entries(roles.editors).map(([projectId, subs]) => (
-            <div key={projectId} className="admin-project-group">
-              <div className="admin-project-name">{projectId}</div>
-              {subs.map((sub) => (
-                <div key={sub} className="admin-list-item">
-                  <span className="admin-sub">{sub}</span>
-                  <button type="button" className="ghost danger" onClick={() => removeEditor(projectId, sub)}>Remove</button>
+            <section className="admin-section">
+              <h4>Project Editors</h4>
+              {roles && Object.entries(roles.editors).map(([projectId, entries]) => (
+                <div key={projectId} className="admin-project-group">
+                  <div className="admin-project-name">{projectId}</div>
+                  {entries.map((entry) => {
+                    const email = typeof entry === 'string' ? entry : entry.email
+                    const sub = typeof entry === 'string' ? entry : entry.sub
+                    return (
+                      <div key={sub} className="admin-list-item">
+                        <span className="admin-email">{email}</span>
+                        <button type="button" className="ghost danger" onClick={() => removeEditor(projectId, sub)}>Remove</button>
+                      </div>
+                    )
+                  })}
                 </div>
               ))}
+              <div className="admin-add-row">
+                <select value={newEditorProject} onChange={(e) => setNewEditorProject(e.target.value)}>
+                  <option value="">Select project...</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {newEditorProject && (
+                  <UserPicker
+                    users={users}
+                    exclude={roles?.editors[newEditorProject]}
+                    onSelect={addEditor}
+                  />
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {tab === 'projects' && (
+          <section className="admin-section">
+            <div className="admin-table">
+              {projects.map((p) => {
+                const editorCount = (roles?.editors[p.id] || []).length
+                return (
+                  <div key={p.id} className="admin-table-row">
+                    <div className="admin-table-main">
+                      <strong>{p.name}</strong>
+                      {p.description && <span className="admin-table-desc">{p.description}</span>}
+                    </div>
+                    <span className="admin-table-meta">{editorCount} editor{editorCount !== 1 ? 's' : ''}</span>
+                    <button type="button" className="ghost danger" onClick={() => {
+                      if (confirm(`Delete project "${p.name}" and all its data?`)) onDeleteProject(p.id)
+                    }}>Delete</button>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-          <div className="admin-add-row">
-            <input placeholder="Project ID" value={newEditorProject} onChange={(e) => setNewEditorProject(e.target.value)} />
-            <input placeholder="Cognito sub" value={newEditorSub} onChange={(e) => setNewEditorSub(e.target.value)} />
-            <button type="button" className="ghost" onClick={addEditor}>Add</button>
-          </div>
-        </section>
+            {showCreate ? (
+              <form className="project-create-form" onSubmit={handleCreateProject}>
+                <input placeholder="Project name" value={newProjName} onChange={(e) => setNewProjName(e.target.value)} required />
+                <input placeholder="Description" value={newProjDesc} onChange={(e) => setNewProjDesc(e.target.value)} />
+                <button type="submit" className="primary">Create</button>
+                <button type="button" className="ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+              </form>
+            ) : (
+              <button type="button" className="ghost" onClick={() => setShowCreate(true)} style={{ marginTop: '0.5rem' }}>+ New Project</button>
+            )}
+          </section>
+        )}
+
+        {tab === 'locks' && (
+          <section className="admin-section">
+            {locks.length === 0 ? (
+              <div className="diff-empty">No active locks</div>
+            ) : (
+              <div className="admin-table">
+                {locks.map((lock) => (
+                  <div key={`${lock.projectId}-${lock.userSub}`} className="admin-table-row">
+                    <div className="admin-table-main">
+                      <strong>{lock.projectId}</strong>
+                      <span className="admin-table-desc">{lock.email}</span>
+                    </div>
+                    <span className="admin-table-meta">{formatTimeAgo(lock.lockedAt)}</span>
+                    <button type="button" className="ghost danger" onClick={() => handleBreakLock(lock.projectId, lock.userSub)}>Break</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'activity' && (
+          <section className="admin-section">
+            {activity.length === 0 ? (
+              <div className="diff-empty">No recent activity</div>
+            ) : (
+              <div className="commit-log-list">
+                {activity.map((commit, index) => {
+                  const isExpanded = expandedCommits.has(commit.id)
+                  const prevSnapshot = index < activity.length - 1 ? activity[index + 1]?.snapshot : null
+                  const diff = isExpanded ? computeDiff(prevSnapshot, commit.snapshot) : null
+                  const hasChanges = diff && (
+                    diff.stackAdded.length || diff.stackRemoved.length ||
+                    diff.subsystemsAdded.length || diff.subsystemsRemoved.length ||
+                    diff.subsystemsChanged.length
+                  )
+
+                  return (
+                    <div key={commit.id} className="commit-entry">
+                      <div className="commit-entry-header" onClick={() => toggleCommitExpand(commit.id)}>
+                        <span className="commit-entry-toggle">{isExpanded ? '▾' : '▸'}</span>
+                        <div className="commit-entry-body">
+                          <div className="commit-entry-message">
+                            <span className="commit-project-tag">{commit.projectName}</span> {commit.message}
+                          </div>
+                          <div className="commit-entry-meta">
+                            {commit.author} · {formatTimeAgo(commit.timestamp)}
+                          </div>
+                        </div>
+                      </div>
+                      {isExpanded && diff && (
+                        <div className="commit-diff">
+                          {!hasChanges && <div className="diff-empty">Initial commit</div>}
+                          {(diff.stackAdded.length > 0 || diff.stackRemoved.length > 0) && (
+                            <>
+                              <div className="diff-section">Stack</div>
+                              {diff.stackAdded.map((id) => (
+                                <div key={`+${id}`} className="diff-added">{resolveItemName(id)}</div>
+                              ))}
+                              {diff.stackRemoved.map((id) => (
+                                <div key={`-${id}`} className="diff-removed">{resolveItemName(id)}</div>
+                              ))}
+                            </>
+                          )}
+                          {diff.subsystemsAdded.map((sub) => (
+                            <div key={`+sub-${sub.id}`}>
+                              <div className="diff-section">Subsystem: {sub.name}</div>
+                              <div className="diff-added">added</div>
+                            </div>
+                          ))}
+                          {diff.subsystemsRemoved.map((sub) => (
+                            <div key={`-sub-${sub.id}`}>
+                              <div className="diff-section">Subsystem: {sub.name}</div>
+                              <div className="diff-removed">removed</div>
+                            </div>
+                          ))}
+                          {diff.subsystemsChanged.map((sub) => (
+                            <div key={`~sub-${sub.id}`}>
+                              <div className="diff-section">Subsystem: {sub.name}</div>
+                              {sub.additionsAdded.map((id) => (
+                                <div key={`+a-${id}`} className="diff-added">addition: {resolveItemName(id)}</div>
+                              ))}
+                              {sub.additionsRemoved.map((id) => (
+                                <div key={`-a-${id}`} className="diff-removed">addition: {resolveItemName(id)}</div>
+                              ))}
+                              {sub.exclusionsAdded.map((id) => (
+                                <div key={`+e-${id}`} className="diff-added">exclusion: {resolveItemName(id)}</div>
+                              ))}
+                              {sub.exclusionsRemoved.map((id) => (
+                                <div key={`-e-${id}`} className="diff-removed">exclusion: {resolveItemName(id)}</div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {saving && <p className="admin-saving">Saving...</p>}
       </div>
@@ -1622,7 +1882,13 @@ function App() {
       </main>
 
       {showAdmin && token && (
-        <AdminPanel token={token} onClose={() => setShowAdmin(false)} />
+        <AdminPanel
+          token={token}
+          projects={projects}
+          onClose={() => setShowAdmin(false)}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+        />
       )}
 
       {showCommitDialog && token && activeProject && (

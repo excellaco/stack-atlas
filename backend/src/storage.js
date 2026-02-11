@@ -153,3 +153,60 @@ export const appendCommit = async (projectId, commit) => {
   log.commits.push(commit);
   await writeJson(`projects/${projectId}/commits.json`, log);
 };
+
+// --- User Registry ---
+
+const registeredThisInvocation = new Set();
+
+export const getUserRegistry = async () => {
+  const data = await readJson("config/users.json");
+  return data || { users: {} };
+};
+
+export const ensureUserInRegistry = async (user) => {
+  if (registeredThisInvocation.has(user.sub)) return;
+  registeredThisInvocation.add(user.sub);
+  const registry = await getUserRegistry();
+  if (registry.users[user.sub]) return;
+  registry.users[user.sub] = {
+    email: user.email || "",
+    name: user.name || "",
+    firstSeen: new Date().toISOString()
+  };
+  await writeJson("config/users.json", registry);
+};
+
+// --- Admin helpers ---
+
+export const listAllDrafts = async () => {
+  const keys = await listKeys("drafts/");
+  const drafts = [];
+  for (const key of keys) {
+    if (!key.endsWith(".json")) continue;
+    // Key format: drafts/{userSub}/{projectId}.json
+    const parts = key.replace("drafts/", "").replace(".json", "").split("/");
+    if (parts.length !== 2) continue;
+    const data = await readJson(key);
+    if (data) {
+      drafts.push({ userSub: parts[0], projectId: parts[1], ...data });
+    }
+  }
+  return drafts;
+};
+
+export const listAllCommitLogs = async () => {
+  const keys = await listKeys("projects/");
+  const commits = [];
+  for (const key of keys) {
+    if (!key.endsWith("/commits.json")) continue;
+    // Key format: projects/{projectId}/commits.json
+    const projectId = key.split("/")[1];
+    const data = await readJson(key);
+    if (data?.commits) {
+      for (const commit of data.commits) {
+        commits.push({ ...commit, projectId });
+      }
+    }
+  }
+  return commits;
+};

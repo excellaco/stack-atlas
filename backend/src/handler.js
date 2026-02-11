@@ -7,7 +7,9 @@ import {
   listSubsystems, getSubsystem, putSubsystem, deleteSubsystem,
   getRoles, putRoles,
   getDraft, getDraftForProject, putDraft, deleteDraft, isLockExpired,
-  getCommitLog, appendCommit
+  getCommitLog, appendCommit,
+  getUserRegistry, ensureUserInRegistry,
+  listAllDrafts, listAllCommitLogs
 } from "./storage.js";
 
 const jsonResponse = (statusCode, body, headers = {}) => ({
@@ -40,6 +42,13 @@ const parseBody = (event) => {
 const slugify = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64);
 
+const authenticate = async (auth) => {
+  const user = await authenticate(auth);
+  // Fire-and-forget user registry update
+  ensureUserInRegistry(user).catch(() => {});
+  return user;
+};
+
 export const handler = async (event) => {
   const method = event.requestContext.http.method.toUpperCase();
   const path = event.rawPath;
@@ -52,13 +61,13 @@ export const handler = async (event) => {
 
     // --- Projects list ---
     if (method === "GET" && path === "/projects") {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const index = await getProjectIndex();
       return jsonResponse(200, { data: index.projects }, cors);
     }
 
     if (method === "POST" && path === "/projects") {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
       const body = parseBody(event);
       if (!body.name?.trim()) return jsonResponse(400, { message: "Project name is required" }, cors);
@@ -86,7 +95,7 @@ export const handler = async (event) => {
     const projectMatch = path.match(/^\/projects\/([^/]+)$/);
 
     if (method === "PUT" && projectMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(projectMatch[1]);
       if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
       const body = parseBody(event);
@@ -101,7 +110,7 @@ export const handler = async (event) => {
     }
 
     if (method === "DELETE" && projectMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(projectMatch[1]);
       if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
       const index = await getProjectIndex();
@@ -117,7 +126,7 @@ export const handler = async (event) => {
     const stackMatch = path.match(/^\/projects\/([^/]+)\/stack$/);
 
     if (method === "GET" && stackMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(stackMatch[1]);
       const stack = await getStack(projectId);
       if (!stack) return jsonResponse(404, { message: "Stack not found" }, cors);
@@ -125,7 +134,7 @@ export const handler = async (event) => {
     }
 
     if (method === "PUT" && stackMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(stackMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       const body = parseBody(event);
@@ -148,14 +157,14 @@ export const handler = async (event) => {
     const subsystemMatch = path.match(/^\/projects\/([^/]+)\/subsystems\/([^/]+)$/);
 
     if (method === "GET" && subsystemsMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(subsystemsMatch[1]);
       const subs = await listSubsystems(projectId);
       return jsonResponse(200, { data: subs }, cors);
     }
 
     if (method === "POST" && subsystemsMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(subsystemsMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       const body = parseBody(event);
@@ -180,7 +189,7 @@ export const handler = async (event) => {
     }
 
     if (method === "PUT" && subsystemMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(subsystemMatch[1]);
       const subId = decodeURIComponent(subsystemMatch[2]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
@@ -197,7 +206,7 @@ export const handler = async (event) => {
     }
 
     if (method === "DELETE" && subsystemMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(subsystemMatch[1]);
       const subId = decodeURIComponent(subsystemMatch[2]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
@@ -209,29 +218,87 @@ export const handler = async (event) => {
 
     // --- Admin: Roles ---
     if (method === "GET" && path === "/admin/roles") {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
       const roles = await getRoles();
       return jsonResponse(200, { data: roles }, cors);
     }
 
     if (method === "PUT" && path === "/admin/roles") {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
       const body = parseBody(event);
       if (!Array.isArray(body.admins) || typeof body.editors !== "object") {
         return jsonResponse(400, { message: "Invalid roles format" }, cors);
+      }
+      // Validate shape: each entry must have { sub, email }
+      const validEntry = (e) => e && typeof e.sub === "string" && typeof e.email === "string";
+      const validAdmins = body.admins.every(validEntry);
+      const validEditors = Object.values(body.editors).every((arr) => Array.isArray(arr) && arr.every(validEntry));
+      if (!validAdmins || !validEditors) {
+        return jsonResponse(400, { message: "Each role entry must have { sub, email }" }, cors);
       }
       const roles = { admins: body.admins, editors: body.editors };
       await putRoles(roles);
       return jsonResponse(200, { data: roles }, cors);
     }
 
+    // --- Admin: Users ---
+    if (method === "GET" && path === "/admin/users") {
+      const user = await authenticate(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const registry = await getUserRegistry();
+      return jsonResponse(200, { data: registry.users }, cors);
+    }
+
+    // --- Admin: Locks ---
+    const lockMatch = path.match(/^\/admin\/locks\/([^/]+)\/([^/]+)$/);
+
+    if (method === "GET" && path === "/admin/locks") {
+      const user = await authenticate(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const allDrafts = await listAllDrafts();
+      const registry = await getUserRegistry();
+      const activeLocks = allDrafts
+        .filter((d) => !isLockExpired(d.lockedAt))
+        .map((d) => ({
+          projectId: d.projectId,
+          userSub: d.userSub,
+          email: registry.users[d.lockedBy]?.email || d.lockedBy,
+          lockedAt: d.lockedAt,
+          updatedAt: d.updatedAt
+        }));
+      return jsonResponse(200, { data: activeLocks }, cors);
+    }
+
+    if (method === "DELETE" && lockMatch) {
+      const user = await authenticate(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const projectId = decodeURIComponent(lockMatch[1]);
+      const userSub = decodeURIComponent(lockMatch[2]);
+      await deleteDraft(userSub, projectId);
+      return jsonResponse(200, { message: "Lock broken" }, cors);
+    }
+
+    // --- Admin: Activity ---
+    if (method === "GET" && path === "/admin/activity") {
+      const user = await authenticate(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const allCommits = await listAllCommitLogs();
+      const index = await getProjectIndex();
+      const projectNames = Object.fromEntries(index.projects.map((p) => [p.id, p.name]));
+      const enriched = allCommits
+        .map((c) => ({ ...c, projectName: projectNames[c.projectId] || c.projectId }))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 50);
+      return jsonResponse(200, { data: enriched }, cors);
+    }
+
     // --- Drafts ---
     const draftMatch = path.match(/^\/projects\/([^/]+)\/draft$/);
 
     if (method === "GET" && draftMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(draftMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       // Check if another user has an active lock
@@ -244,7 +311,7 @@ export const handler = async (event) => {
     }
 
     if (method === "PUT" && draftMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(draftMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       // Check lock
@@ -268,7 +335,7 @@ export const handler = async (event) => {
     }
 
     if (method === "DELETE" && draftMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(draftMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       const draft = await getDraft(user.sub, projectId);
@@ -286,7 +353,7 @@ export const handler = async (event) => {
     const commitsMatch = path.match(/^\/projects\/([^/]+)\/commits$/);
 
     if (method === "POST" && commitMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(commitMatch[1]);
       if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
       const body = parseBody(event);
@@ -368,7 +435,7 @@ export const handler = async (event) => {
     }
 
     if (method === "GET" && commitsMatch) {
-      const user = await verifyAuth(auth);
+      const user = await authenticate(auth);
       const projectId = decodeURIComponent(commitsMatch[1]);
       const log = await getCommitLog(projectId);
       // Return newest first

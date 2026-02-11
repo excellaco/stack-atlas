@@ -66,7 +66,11 @@ module "api" {
     "PUT /projects/{id}/draft",
     "DELETE /projects/{id}/draft",
     "POST /projects/{id}/commit",
-    "GET /projects/{id}/commits"
+    "GET /projects/{id}/commits",
+    "GET /admin/users",
+    "GET /admin/locks",
+    "DELETE /admin/locks/{projectId}/{userSub}",
+    "GET /admin/activity"
   ]
 
   cors_allow_origins = local.allowed_origins

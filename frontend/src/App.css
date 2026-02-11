@@ -1169,6 +1169,163 @@
   margin-top: 0.5rem;
 }
 
+.admin-email {
+  font-size: 0.75rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Admin Tabs --- */
+
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+}
+
+.admin-tab {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.admin-tab:hover {
+  color: var(--ink);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.admin-tab.active {
+  color: var(--ink);
+  background: rgba(15, 23, 42, 0.06);
+  font-weight: 600;
+}
+
+/* --- Admin Table --- */
+
+.admin-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-table-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 6px;
+}
+
+.admin-table-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.admin-table-main strong {
+  font-size: 0.8rem;
+}
+
+.admin-table-desc {
+  font-size: 0.7rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-meta {
+  font-size: 0.65rem;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --- User Picker --- */
+
+.user-picker {
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+}
+
+.user-picker input {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  box-sizing: border-box;
+}
+
+.user-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  z-index: 200;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.user-picker-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.1s ease;
+}
+
+.user-picker-option:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.user-picker-email {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.user-picker-name {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+/* --- Commit Project Tag --- */
+
+.commit-project-tag {
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
 /* --- Draft Status --- */
 
 .draft-status {

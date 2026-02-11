@@ -81,3 +81,18 @@ export const commitChanges = (token, projectId, { message }) =>
 
 export const getCommits = (token, projectId) =>
   request(`/projects/${encodeURIComponent(projectId)}/commits`, { token });
+
+// Admin - Users
+export const listUsers = (token) =>
+  request("/admin/users", { token });
+
+// Admin - Locks
+export const listLocks = (token) =>
+  request("/admin/locks", { token });
+
+export const breakLock = (token, projectId, userSub) =>
+  request(`/admin/locks/${encodeURIComponent(projectId)}/${encodeURIComponent(userSub)}`, { method: "DELETE", token });
+
+// Admin - Activity
+export const getActivity = (token) =>
+  request("/admin/activity", { token });
