@@ -99,10 +99,35 @@ resource "aws_apigatewayv2_route" "routes" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
+resource "aws_cloudwatch_log_group" "api_access" {
+  name              = "/aws/apigateway/${local.safe_name}"
+  retention_in_days = 14
+  tags              = local.default_tags
+}
+
 resource "aws_apigatewayv2_stage" "api" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
   auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_access.arn
+    format = jsonencode({
+      requestId             = "$context.requestId"
+      ip                    = "$context.identity.sourceIp"
+      requestTime           = "$context.requestTime"
+      httpMethod            = "$context.httpMethod"
+      routeKey              = "$context.routeKey"
+      path                  = "$context.path"
+      status                = "$context.status"
+      protocol              = "$context.protocol"
+      responseLength        = "$context.responseLength"
+      integrationError      = "$context.integrationErrorMessage"
+      integrationStatus     = "$context.integration.status"
+      integrationLatency    = "$context.integration.latency"
+      integrationRequestId  = "$context.integration.requestId"
+    })
+  }
 }
 
 resource "aws_lambda_permission" "apigw" {
@@ -163,7 +188,7 @@ resource "aws_apigatewayv2_domain_name" "api" {
 resource "aws_apigatewayv2_api_mapping" "api" {
   api_id      = aws_apigatewayv2_api.api.id
   domain_name = aws_apigatewayv2_domain_name.api.id
-  stage       = "$default"
+  stage       = aws_apigatewayv2_stage.api.id
   depends_on  = [aws_apigatewayv2_stage.api]
 }
 
