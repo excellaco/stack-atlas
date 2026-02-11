@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { categories, items, types } from './data/stackData'
+import { signIn, signOut, getSession, parseIdToken } from './auth'
+import * as api from './api'
 import './App.css'
 
 const itemsById = new Map(items.map((item) => [item.id, item]))
@@ -161,6 +163,312 @@ const getParentName = (item) => {
   return itemsById.get(parentId)?.name
 }
 
+// --- Auth Bar ---
+
+function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminClick }) {
+  const [showForm, setShowForm] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await onSignIn(email, password)
+      setShowForm(false)
+      setEmail('')
+      setPassword('')
+    } catch (err) {
+      setError(err.message || 'Sign in failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (user) {
+    return (
+      <div className="auth-bar">
+        <span className="auth-user">{user.email}</span>
+        {isAdmin && (
+          <button type="button" className="ghost" onClick={onAdminClick}>
+            Admin
+          </button>
+        )}
+        <button type="button" className="ghost" onClick={onSignOut}>
+          Sign out
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="auth-bar">
+      {showForm ? (
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button type="submit" className="primary" disabled={loading}>
+            {loading ? '...' : 'Sign in'}
+          </button>
+          <button type="button" className="ghost" onClick={() => setShowForm(false)}>
+            Cancel
+          </button>
+          {error && <span className="auth-error">{error}</span>}
+        </form>
+      ) : (
+        <button type="button" className="ghost" onClick={() => setShowForm(true)}>
+          Sign in
+        </button>
+      )}
+    </div>
+  )
+}
+
+// --- Project Selector ---
+
+function ProjectSelector({
+  token, projects, activeProject, activeSubsystem, subsystems,
+  onSelectProject, onSelectSubsystem, onSave, onLoadProject,
+  canEdit, isAdmin, onCreateProject, onDeleteProject,
+  onCreateSubsystem, onDeleteSubsystem, dirty
+}) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [showCreateSub, setShowCreateSub] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newSubName, setNewSubName] = useState('')
+  const [newSubDesc, setNewSubDesc] = useState('')
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    if (!newName.trim()) return
+    await onCreateProject(newName.trim(), newDesc.trim())
+    setNewName('')
+    setNewDesc('')
+    setShowCreate(false)
+  }
+
+  const handleCreateSub = async (e) => {
+    e.preventDefault()
+    if (!newSubName.trim()) return
+    await onCreateSubsystem(newSubName.trim(), newSubDesc.trim())
+    setNewSubName('')
+    setNewSubDesc('')
+    setShowCreateSub(false)
+  }
+
+  return (
+    <div className="project-bar">
+      <div className="project-selector">
+        <label className="project-label">Project</label>
+        <select
+          value={activeProject?.id || ''}
+          onChange={(e) => onSelectProject(e.target.value || null)}
+        >
+          <option value="">Local (no project)</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        {activeProject && (
+          <>
+            <button type="button" className="ghost" onClick={onLoadProject}>
+              Load
+            </button>
+            {canEdit && (
+              <button type="button" className="primary" onClick={onSave} disabled={!dirty}>
+                {dirty ? 'Save' : 'Saved'}
+              </button>
+            )}
+            {isAdmin && (
+              <button type="button" className="ghost danger" onClick={() => onDeleteProject(activeProject.id)}>
+                Delete
+              </button>
+            )}
+          </>
+        )}
+        {isAdmin && (
+          <button type="button" className="ghost" onClick={() => setShowCreate(!showCreate)}>
+            + New
+          </button>
+        )}
+      </div>
+
+      {showCreate && (
+        <form className="project-create-form" onSubmit={handleCreate}>
+          <input placeholder="Project name" value={newName} onChange={(e) => setNewName(e.target.value)} required />
+          <input placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
+          <button type="submit" className="primary">Create</button>
+          <button type="button" className="ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+        </form>
+      )}
+
+      {activeProject && (
+        <div className="subsystem-selector">
+          <label className="project-label">Subsystem</label>
+          <select
+            value={activeSubsystem?.id || ''}
+            onChange={(e) => onSelectSubsystem(e.target.value || null)}
+          >
+            <option value="">Base project</option>
+            {subsystems.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          {canEdit && (
+            <button type="button" className="ghost" onClick={() => setShowCreateSub(!showCreateSub)}>
+              + New
+            </button>
+          )}
+          {activeSubsystem && canEdit && (
+            <button type="button" className="ghost danger" onClick={() => onDeleteSubsystem(activeSubsystem.id)}>
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+
+      {showCreateSub && (
+        <form className="project-create-form" onSubmit={handleCreateSub}>
+          <input placeholder="Subsystem name" value={newSubName} onChange={(e) => setNewSubName(e.target.value)} required />
+          <input placeholder="Description (optional)" value={newSubDesc} onChange={(e) => setNewSubDesc(e.target.value)} />
+          <button type="submit" className="primary">Create</button>
+          <button type="button" className="ghost" onClick={() => setShowCreateSub(false)}>Cancel</button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// --- Admin Panel ---
+
+function AdminPanel({ token, onClose }) {
+  const [roles, setRoles] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [newAdmin, setNewAdmin] = useState('')
+  const [newEditorProject, setNewEditorProject] = useState('')
+  const [newEditorSub, setNewEditorSub] = useState('')
+
+  useEffect(() => {
+    api.getRoles(token).then(setRoles).catch((e) => setError(e.message)).finally(() => setLoading(false))
+  }, [token])
+
+  const save = async (updated) => {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.putRoles(token, updated)
+      setRoles(result)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const addAdmin = () => {
+    if (!newAdmin.trim() || !roles) return
+    const updated = { ...roles, admins: [...new Set([...roles.admins, newAdmin.trim()])] }
+    save(updated)
+    setNewAdmin('')
+  }
+
+  const removeAdmin = (sub) => {
+    if (!roles) return
+    save({ ...roles, admins: roles.admins.filter((a) => a !== sub) })
+  }
+
+  const addEditor = () => {
+    if (!newEditorProject.trim() || !newEditorSub.trim() || !roles) return
+    const editors = { ...roles.editors }
+    const list = editors[newEditorProject.trim()] || []
+    editors[newEditorProject.trim()] = [...new Set([...list, newEditorSub.trim()])]
+    save({ ...roles, editors })
+    setNewEditorSub('')
+  }
+
+  const removeEditor = (projectId, sub) => {
+    if (!roles) return
+    const editors = { ...roles.editors }
+    editors[projectId] = (editors[projectId] || []).filter((e) => e !== sub)
+    if (!editors[projectId].length) delete editors[projectId]
+    save({ ...roles, editors })
+  }
+
+  if (loading) return <div className="admin-overlay"><div className="admin-panel"><p>Loading...</p></div></div>
+
+  return (
+    <div className="admin-overlay" onClick={onClose}>
+      <div className="admin-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-header">
+          <h3>Admin: Roles</h3>
+          <button type="button" className="ghost" onClick={onClose}>Close</button>
+        </div>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <section className="admin-section">
+          <h4>Admins (Cognito sub IDs)</h4>
+          <div className="admin-list">
+            {roles?.admins.map((sub) => (
+              <div key={sub} className="admin-list-item">
+                <span className="admin-sub">{sub}</span>
+                <button type="button" className="ghost danger" onClick={() => removeAdmin(sub)}>Remove</button>
+              </div>
+            ))}
+          </div>
+          <div className="admin-add-row">
+            <input placeholder="Cognito sub" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} />
+            <button type="button" className="ghost" onClick={addAdmin}>Add</button>
+          </div>
+        </section>
+
+        <section className="admin-section">
+          <h4>Project Editors</h4>
+          {roles && Object.entries(roles.editors).map(([projectId, subs]) => (
+            <div key={projectId} className="admin-project-group">
+              <div className="admin-project-name">{projectId}</div>
+              {subs.map((sub) => (
+                <div key={sub} className="admin-list-item">
+                  <span className="admin-sub">{sub}</span>
+                  <button type="button" className="ghost danger" onClick={() => removeEditor(projectId, sub)}>Remove</button>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="admin-add-row">
+            <input placeholder="Project ID" value={newEditorProject} onChange={(e) => setNewEditorProject(e.target.value)} />
+            <input placeholder="Cognito sub" value={newEditorSub} onChange={(e) => setNewEditorSub(e.target.value)} />
+            <button type="button" className="ghost" onClick={addEditor}>Add</button>
+          </div>
+        </section>
+
+        {saving && <p className="admin-saving">Saving...</p>}
+      </div>
+    </div>
+  )
+}
+
+// --- Main App ---
+
 function App() {
   const [query, setQuery] = useState('')
   const [selectedCategories, setSelectedCategories] = useState([])
@@ -174,6 +482,188 @@ function App() {
   const [density, setDensity] = useState('compact')
   const [collapsedCategories, setCollapsedCategories] = useState(new Set())
   const [exportFormat, setExportFormat] = useState('markdown')
+
+  // Auth state
+  const [user, setUser] = useState(null)
+  const [token, setToken] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  // Project state
+  const [projects, setProjects] = useState([])
+  const [activeProject, setActiveProject] = useState(null)
+  const [subsystems, setSubsystems] = useState([])
+  const [activeSubsystem, setActiveSubsystem] = useState(null)
+  const [savedStack, setSavedStack] = useState(null)
+  const [showAdmin, setShowAdmin] = useState(false)
+
+  // Restore session on mount
+  useEffect(() => {
+    getSession().then((session) => {
+      if (session) {
+        const parsed = parseIdToken(session)
+        setUser(parsed)
+        setToken(session.getIdToken().getJwtToken())
+      }
+    }).catch(() => {}).finally(() => setAuthLoading(false))
+  }, [])
+
+  // Load projects when authenticated
+  useEffect(() => {
+    if (!token) {
+      setProjects([])
+      setActiveProject(null)
+      setSubsystems([])
+      setActiveSubsystem(null)
+      return
+    }
+    api.listProjects(token).then(setProjects).catch(() => setProjects([]))
+  }, [token])
+
+  // Load subsystems when project changes
+  useEffect(() => {
+    if (!token || !activeProject) {
+      setSubsystems([])
+      setActiveSubsystem(null)
+      return
+    }
+    api.listSubsystems(token, activeProject.id).then(setSubsystems).catch(() => setSubsystems([]))
+  }, [token, activeProject?.id])
+
+  const isAdmin = user?.groups?.includes('admins') || false
+
+  const canEditProject = useCallback((projectId) => {
+    if (isAdmin) return true
+    // Editors are checked server-side; optimistically allow if user has a project loaded
+    // The server will reject if unauthorized
+    return !!token
+  }, [isAdmin, token])
+
+  const handleSignIn = async (email, password) => {
+    const session = await signIn(email, password)
+    const parsed = parseIdToken(session)
+    setUser(parsed)
+    setToken(session.getIdToken().getJwtToken())
+  }
+
+  const handleSignOut = () => {
+    signOut()
+    setUser(null)
+    setToken(null)
+    setProjects([])
+    setActiveProject(null)
+    setSubsystems([])
+    setActiveSubsystem(null)
+    setSavedStack(null)
+  }
+
+  const handleSelectProject = (projectId) => {
+    if (!projectId) {
+      setActiveProject(null)
+      setActiveSubsystem(null)
+      setSavedStack(null)
+      return
+    }
+    const project = projects.find((p) => p.id === projectId)
+    setActiveProject(project || null)
+    setActiveSubsystem(null)
+    setSavedStack(null)
+  }
+
+  const handleLoadProject = async () => {
+    if (!token || !activeProject) return
+    try {
+      const stack = await api.getStack(token, activeProject.id)
+      if (stack?.items) {
+        setSelectedItems(stack.items)
+        setSavedStack(stack.items)
+      }
+    } catch (err) {
+      console.error('Failed to load stack:', err)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!token || !activeProject) return
+    if (activeSubsystem) {
+      // Save subsystem additions/exclusions relative to parent
+      const parentItems = savedStack || []
+      const parentSet = new Set(parentItems)
+      const currentSet = new Set(selectedItems)
+      const additions = selectedItems.filter((id) => !parentSet.has(id))
+      const exclusions = parentItems.filter((id) => !currentSet.has(id))
+      await api.updateSubsystem(token, activeProject.id, activeSubsystem.id, {
+        additions,
+        exclusions
+      })
+      // Refresh subsystems
+      const subs = await api.listSubsystems(token, activeProject.id)
+      setSubsystems(subs)
+      const updated = subs.find((s) => s.id === activeSubsystem.id)
+      if (updated) setActiveSubsystem(updated)
+    } else {
+      await api.saveStack(token, activeProject.id, selectedItems)
+      setSavedStack([...selectedItems])
+    }
+  }
+
+  const handleSelectSubsystem = async (subId) => {
+    if (!subId) {
+      setActiveSubsystem(null)
+      // Reload base project stack
+      if (savedStack) setSelectedItems([...savedStack])
+      return
+    }
+    const sub = subsystems.find((s) => s.id === subId)
+    setActiveSubsystem(sub || null)
+    if (sub && savedStack) {
+      // Compute effective stack: (parent - exclusions) + additions
+      const parentSet = new Set(savedStack)
+      ;(sub.exclusions || []).forEach((id) => parentSet.delete(id))
+      ;(sub.additions || []).forEach((id) => parentSet.add(id))
+      setSelectedItems(Array.from(parentSet))
+    }
+  }
+
+  const handleCreateProject = async (name, description) => {
+    if (!token) return
+    const project = await api.createProject(token, { name, description })
+    setProjects((prev) => [...prev, project])
+    setActiveProject(project)
+  }
+
+  const handleDeleteProject = async (projectId) => {
+    if (!token || !confirm('Delete this project and all its subsystems?')) return
+    await api.deleteProject(token, projectId)
+    setProjects((prev) => prev.filter((p) => p.id !== projectId))
+    if (activeProject?.id === projectId) {
+      setActiveProject(null)
+      setActiveSubsystem(null)
+      setSavedStack(null)
+    }
+  }
+
+  const handleCreateSubsystem = async (name, description) => {
+    if (!token || !activeProject) return
+    const sub = await api.createSubsystem(token, activeProject.id, { name, description })
+    setSubsystems((prev) => [...prev, sub])
+  }
+
+  const handleDeleteSubsystem = async (subId) => {
+    if (!token || !activeProject || !confirm('Delete this subsystem?')) return
+    await api.deleteSubsystemApi(token, activeProject.id, subId)
+    setSubsystems((prev) => prev.filter((s) => s.id !== subId))
+    if (activeSubsystem?.id === subId) {
+      setActiveSubsystem(null)
+      if (savedStack) setSelectedItems([...savedStack])
+    }
+  }
+
+  const dirty = useMemo(() => {
+    if (!activeProject || !savedStack) return selectedItems.length > 0 && !!activeProject
+    if (selectedItems.length !== savedStack.length) return true
+    const saved = new Set(savedStack)
+    return selectedItems.some((id) => !saved.has(id))
+  }, [selectedItems, savedStack, activeProject])
 
   const toggleCategoryCollapse = (categoryId) => {
     setCollapsedCategories((prev) => {
@@ -191,6 +681,17 @@ function App() {
     () => new Set(selectedItems),
     [selectedItems]
   )
+
+  const inheritedSet = useMemo(() => {
+    if (!activeSubsystem || !savedStack) return new Set()
+    const parentSet = new Set(savedStack)
+    const exclusionSet = new Set(activeSubsystem.exclusions || [])
+    const inherited = new Set()
+    for (const id of parentSet) {
+      if (!exclusionSet.has(id)) inherited.add(id)
+    }
+    return inherited
+  }, [activeSubsystem, savedStack])
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -306,6 +807,16 @@ function App() {
 
   return (
     <div className={`app ${density}`}>
+      {!authLoading && (
+        <AuthBar
+          user={user}
+          onSignIn={handleSignIn}
+          onSignOut={handleSignOut}
+          isAdmin={isAdmin}
+          onAdminClick={() => setShowAdmin(true)}
+        />
+      )}
+
       <header className="hero">
         <div>
           <p className="eyebrow">Stack Atlas</p>
@@ -370,6 +881,27 @@ function App() {
           </div>
         </div>
       </header>
+
+      {user && (
+        <ProjectSelector
+          token={token}
+          projects={projects}
+          activeProject={activeProject}
+          activeSubsystem={activeSubsystem}
+          subsystems={subsystems}
+          onSelectProject={handleSelectProject}
+          onSelectSubsystem={handleSelectSubsystem}
+          onSave={handleSave}
+          onLoadProject={handleLoadProject}
+          canEdit={activeProject ? canEditProject(activeProject.id) : false}
+          isAdmin={isAdmin}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          onCreateSubsystem={handleCreateSubsystem}
+          onDeleteSubsystem={handleDeleteSubsystem}
+          dirty={dirty}
+        />
+      )}
 
       <main className="main-grid">
         <aside className="filters-panel">
@@ -513,6 +1045,7 @@ function App() {
               <div className="item-list">
                 {section.items.map(({ item, depth }, index) => {
                   const isSelected = selectedSet.has(item.id)
+                  const isInherited = inheritedSet.has(item.id)
                   const parentName = getParentName(item)
                   const commonItems = (item.commonWith || [])
                     .map((id) => itemsById.get(id))
@@ -529,7 +1062,7 @@ function App() {
                   return (
                     <article
                       key={item.id}
-                      className={isSelected ? 'item-card is-selected' : 'item-card'}
+                      className={`item-card${isSelected ? ' is-selected' : ''}${isInherited && isSelected ? ' is-inherited' : ''}`}
                       style={{
                         '--accent': section.color,
                         '--depth': depth,
@@ -551,6 +1084,9 @@ function App() {
                         <div className="item-title">
                           <h3>{item.name}</h3>
                           <span className="item-type">{item.type}</span>
+                          {isInherited && isSelected && (
+                            <span className="inherited-badge">inherited</span>
+                          )}
                         </div>
                         <div className="item-checkbox" />
                       </div>
@@ -619,6 +1155,13 @@ function App() {
             </button>
           </div>
 
+          {activeProject && (
+            <div className="project-context">
+              <strong>{activeProject.name}</strong>
+              {activeSubsystem && <span> / {activeSubsystem.name}</span>}
+            </div>
+          )}
+
           {selectedItems.length ? (
             <div className="selected-groups">
               {selectedByCategory.map((group) => (
@@ -635,10 +1178,11 @@ function App() {
                       <button
                         key={item.id}
                         type="button"
-                        className="selected-chip"
+                        className={`selected-chip${inheritedSet.has(item.id) ? ' inherited' : ''}`}
                         onClick={() => removeItem(item.id)}
                       >
                         {item.name}
+                        {inheritedSet.has(item.id) && <span className="inherited-dot" />}
                         <span className="remove">x</span>
                       </button>
                     ))}
@@ -679,6 +1223,11 @@ function App() {
           </div>
         </aside>
       </main>
+
+      {showAdmin && token && (
+        <AdminPanel token={token} onClose={() => setShowAdmin(false)} />
+      )}
+
       <footer className="app-footer">
         <span>Copyright © {new Date().getFullYear()}</span>
         <a href="https://ahara.io" target="_blank" rel="noreferrer">

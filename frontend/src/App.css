@@ -927,3 +927,244 @@
 .app-footer:hover img {
   opacity: 1;
 }
+
+/* --- Auth Bar --- */
+
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.35rem 0;
+  font-size: 0.8rem;
+}
+
+.auth-user {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.auth-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.auth-form input {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  width: 160px;
+}
+
+.auth-error {
+  color: #dc2626;
+  font-size: 0.75rem;
+}
+
+/* --- Project Bar --- */
+
+.project-bar {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-selector,
+.subsystem-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.project-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.project-selector select,
+.subsystem-selector select {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  background: white;
+  min-width: 160px;
+}
+
+.project-create-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.project-create-form input {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.project-context {
+  font-size: 0.8rem;
+  color: var(--ink);
+  padding: 0.35rem 0.5rem;
+  background: rgba(15, 118, 110, 0.06);
+  border-radius: 6px;
+}
+
+/* Danger buttons */
+
+.ghost.danger {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.ghost.danger:hover {
+  background: rgba(220, 38, 38, 0.05);
+  border-color: #dc2626;
+}
+
+/* --- Inherited items --- */
+
+.inherited-badge {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.06);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.item-card.is-inherited {
+  opacity: 0.7;
+}
+
+.item-card.is-inherited .item-checkbox {
+  background: rgba(15, 118, 110, 0.3);
+  border-color: rgba(15, 118, 110, 0.3);
+}
+
+.selected-chip.inherited {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.inherited-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+}
+
+/* --- Admin Panel --- */
+
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.admin-panel {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 1.25rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.2);
+}
+
+.admin-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.admin-section h4 {
+  margin: 0 0 0.5rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 6px;
+}
+
+.admin-sub {
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-add-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.admin-add-row input {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-project-group {
+  margin-bottom: 0.5rem;
+}
+
+.admin-project-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+}
+
+.admin-saving {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 0.5rem;
+}

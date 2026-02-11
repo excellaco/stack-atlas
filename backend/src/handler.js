@@ -1,0 +1,234 @@
+import { randomUUID } from "crypto";
+import { verifyAuth } from "./auth.js";
+import { isAdmin, isEditor } from "./roles.js";
+import {
+  getProjectIndex, putProjectIndex,
+  getStack, putStack, deleteProjectData,
+  listSubsystems, getSubsystem, putSubsystem, deleteSubsystem,
+  getRoles, putRoles
+} from "./storage.js";
+
+const jsonResponse = (statusCode, body, headers = {}) => ({
+  statusCode,
+  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", ...headers },
+  body: JSON.stringify(body)
+});
+
+const emptyResponse = (statusCode, headers = {}) => ({
+  statusCode,
+  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", ...headers }
+});
+
+const getCorsHeaders = (origin) => {
+  const allowList = (process.env.ALLOWED_ORIGINS ?? "*").split(",").map((s) => s.trim());
+  const allowOrigin = allowList.includes("*") ? "*" : allowList.includes(origin ?? "") ? origin : allowList[0] || "*";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization,content-type",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
+  };
+};
+
+const parseBody = (event) => {
+  if (!event.body) throw new Error("Missing request body");
+  const raw = event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
+  return JSON.parse(raw);
+};
+
+const slugify = (name) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64);
+
+export const handler = async (event) => {
+  const method = event.requestContext.http.method.toUpperCase();
+  const path = event.rawPath;
+  const cors = getCorsHeaders(event.headers?.origin ?? event.headers?.Origin);
+
+  if (method === "OPTIONS") return emptyResponse(204, cors);
+
+  try {
+    const auth = event.headers?.authorization ?? event.headers?.Authorization;
+
+    // --- Projects list ---
+    if (method === "GET" && path === "/projects") {
+      const user = await verifyAuth(auth);
+      const index = await getProjectIndex();
+      return jsonResponse(200, { data: index.projects }, cors);
+    }
+
+    if (method === "POST" && path === "/projects") {
+      const user = await verifyAuth(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const body = parseBody(event);
+      if (!body.name?.trim()) return jsonResponse(400, { message: "Project name is required" }, cors);
+      const now = new Date().toISOString();
+      const id = slugify(body.name) || randomUUID();
+      const index = await getProjectIndex();
+      if (index.projects.some((p) => p.id === id)) {
+        return jsonResponse(409, { message: "Project with this name already exists" }, cors);
+      }
+      const project = {
+        id,
+        name: body.name.trim(),
+        description: (body.description || "").trim(),
+        createdBy: user.sub,
+        createdAt: now,
+        updatedAt: now
+      };
+      index.projects.push(project);
+      await putProjectIndex(index);
+      await putStack(id, { items: [], updatedAt: now, updatedBy: user.sub });
+      return jsonResponse(201, { data: project }, cors);
+    }
+
+    // --- Single project ---
+    const projectMatch = path.match(/^\/projects\/([^/]+)$/);
+
+    if (method === "PUT" && projectMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(projectMatch[1]);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const body = parseBody(event);
+      const index = await getProjectIndex();
+      const project = index.projects.find((p) => p.id === projectId);
+      if (!project) return jsonResponse(404, { message: "Project not found" }, cors);
+      if (body.name?.trim()) project.name = body.name.trim();
+      if (body.description !== undefined) project.description = (body.description || "").trim();
+      project.updatedAt = new Date().toISOString();
+      await putProjectIndex(index);
+      return jsonResponse(200, { data: project }, cors);
+    }
+
+    if (method === "DELETE" && projectMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(projectMatch[1]);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const index = await getProjectIndex();
+      const idx = index.projects.findIndex((p) => p.id === projectId);
+      if (idx === -1) return jsonResponse(404, { message: "Project not found" }, cors);
+      index.projects.splice(idx, 1);
+      await putProjectIndex(index);
+      await deleteProjectData(projectId);
+      return jsonResponse(200, { message: "Deleted" }, cors);
+    }
+
+    // --- Stack ---
+    const stackMatch = path.match(/^\/projects\/([^/]+)\/stack$/);
+
+    if (method === "GET" && stackMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(stackMatch[1]);
+      const stack = await getStack(projectId);
+      if (!stack) return jsonResponse(404, { message: "Stack not found" }, cors);
+      return jsonResponse(200, { data: stack }, cors);
+    }
+
+    if (method === "PUT" && stackMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(stackMatch[1]);
+      if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+      const body = parseBody(event);
+      if (!Array.isArray(body.items)) return jsonResponse(400, { message: "items must be an array" }, cors);
+      const now = new Date().toISOString();
+      const stack = { items: body.items, updatedAt: now, updatedBy: user.sub };
+      await putStack(projectId, stack);
+      // Update project timestamp
+      const index = await getProjectIndex();
+      const project = index.projects.find((p) => p.id === projectId);
+      if (project) {
+        project.updatedAt = now;
+        await putProjectIndex(index);
+      }
+      return jsonResponse(200, { data: stack }, cors);
+    }
+
+    // --- Subsystems ---
+    const subsystemsMatch = path.match(/^\/projects\/([^/]+)\/subsystems$/);
+    const subsystemMatch = path.match(/^\/projects\/([^/]+)\/subsystems\/([^/]+)$/);
+
+    if (method === "GET" && subsystemsMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(subsystemsMatch[1]);
+      const subs = await listSubsystems(projectId);
+      return jsonResponse(200, { data: subs }, cors);
+    }
+
+    if (method === "POST" && subsystemsMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(subsystemsMatch[1]);
+      if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+      const body = parseBody(event);
+      if (!body.name?.trim()) return jsonResponse(400, { message: "Subsystem name is required" }, cors);
+      const now = new Date().toISOString();
+      const id = slugify(body.name) || randomUUID();
+      const existing = await getSubsystem(projectId, id);
+      if (existing) return jsonResponse(409, { message: "Subsystem with this name already exists" }, cors);
+      const sub = {
+        id,
+        projectId,
+        name: body.name.trim(),
+        description: (body.description || "").trim(),
+        additions: body.additions || [],
+        exclusions: body.exclusions || [],
+        createdBy: user.sub,
+        createdAt: now,
+        updatedAt: now
+      };
+      await putSubsystem(projectId, id, sub);
+      return jsonResponse(201, { data: sub }, cors);
+    }
+
+    if (method === "PUT" && subsystemMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(subsystemMatch[1]);
+      const subId = decodeURIComponent(subsystemMatch[2]);
+      if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+      const existing = await getSubsystem(projectId, subId);
+      if (!existing) return jsonResponse(404, { message: "Subsystem not found" }, cors);
+      const body = parseBody(event);
+      if (body.name?.trim()) existing.name = body.name.trim();
+      if (body.description !== undefined) existing.description = (body.description || "").trim();
+      if (Array.isArray(body.additions)) existing.additions = body.additions;
+      if (Array.isArray(body.exclusions)) existing.exclusions = body.exclusions;
+      existing.updatedAt = new Date().toISOString();
+      await putSubsystem(projectId, subId, existing);
+      return jsonResponse(200, { data: existing }, cors);
+    }
+
+    if (method === "DELETE" && subsystemMatch) {
+      const user = await verifyAuth(auth);
+      const projectId = decodeURIComponent(subsystemMatch[1]);
+      const subId = decodeURIComponent(subsystemMatch[2]);
+      if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+      const existing = await getSubsystem(projectId, subId);
+      if (!existing) return jsonResponse(404, { message: "Subsystem not found" }, cors);
+      await deleteSubsystem(projectId, subId);
+      return jsonResponse(200, { message: "Deleted" }, cors);
+    }
+
+    // --- Admin: Roles ---
+    if (method === "GET" && path === "/admin/roles") {
+      const user = await verifyAuth(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const roles = await getRoles();
+      return jsonResponse(200, { data: roles }, cors);
+    }
+
+    if (method === "PUT" && path === "/admin/roles") {
+      const user = await verifyAuth(auth);
+      if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+      const body = parseBody(event);
+      if (!Array.isArray(body.admins) || typeof body.editors !== "object") {
+        return jsonResponse(400, { message: "Invalid roles format" }, cors);
+      }
+      const roles = { admins: body.admins, editors: body.editors };
+      await putRoles(roles);
+      return jsonResponse(200, { data: roles }, cors);
+    }
+
+    return jsonResponse(404, { message: "Not found" }, cors);
+  } catch (error) {
+    const message = error.message || "Internal error";
+    const statusCode = message.includes("Missing Authorization") || message.includes("Missing Bearer") || message.includes("Invalid token") ? 401 : 400;
+    return jsonResponse(statusCode, { message }, cors);
+  }
+};
