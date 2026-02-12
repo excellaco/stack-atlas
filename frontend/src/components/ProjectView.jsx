@@ -45,8 +45,13 @@ export default function ProjectView() {
   const isAdmin = user?.groups?.includes('admins') || false
 
   useEffect(() => {
-    if (authLoading || !token) return
-    api.getProjectView(projectId)
+    if (authLoading) return
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    api.getProjectView(token, projectId)
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))

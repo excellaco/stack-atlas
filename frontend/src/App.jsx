@@ -125,7 +125,7 @@ function App() {
       .catch(() => setCatalogSource('static'))
   }, [token])
 
-  // Load projects when authenticated
+  // Load projects when authenticated, restore last selection from localStorage
   useEffect(() => {
     if (!token) {
       setProjects([])
@@ -134,17 +134,43 @@ function App() {
       setActiveSubsystem(null)
       return
     }
-    api.listProjects(token).then(setProjects).catch(() => setProjects([]))
+    api.listProjects(token).then((list) => {
+      setProjects(list)
+      const savedProjectId = localStorage.getItem('sa_activeProject')
+      if (savedProjectId) {
+        const project = list.find((p) => p.id === savedProjectId)
+        if (project) {
+          setActiveProject(project)
+          handleLoadProject(savedProjectId)
+        }
+      }
+    }).catch(() => setProjects([]))
   }, [token])
 
-  // Load subsystems when project changes
+  // Load subsystems when project changes, restore last selection
   useEffect(() => {
     if (!token || !activeProject) {
       setSubsystems([])
       setActiveSubsystem(null)
       return
     }
-    api.listSubsystems(token, activeProject.id).then(setSubsystems).catch(() => setSubsystems([]))
+    api.listSubsystems(token, activeProject.id).then((subs) => {
+      setSubsystems(subs)
+      const savedSubId = localStorage.getItem('sa_activeSubsystem')
+      if (savedSubId) {
+        const sub = subs.find((s) => s.id === savedSubId)
+        if (sub) {
+          setActiveSubsystem(sub)
+          // Load subsystem items
+          const subData = draftSubsystems[sub.id] || sub
+          if (subData && savedStack) {
+            const parentSet = new Set(savedStack)
+            ;(subData.additions || []).forEach((id) => parentSet.add(id))
+            setSelectedItems(Array.from(parentSet))
+          }
+        }
+      }
+    }).catch(() => setSubsystems([]))
   }, [token, activeProject?.id])
 
   const isAdmin = user?.groups?.includes('admins') || false
@@ -177,6 +203,8 @@ function App() {
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
+    localStorage.removeItem('sa_activeProject')
+    localStorage.removeItem('sa_activeSubsystem')
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
   }
 
@@ -191,6 +219,8 @@ function App() {
       setHasDraft(false)
       setDraftStatus('idle')
       setDraftSubsystems({})
+      localStorage.removeItem('sa_activeProject')
+      localStorage.removeItem('sa_activeSubsystem')
       return
     }
     const project = projects.find((p) => p.id === projectId)
@@ -201,6 +231,8 @@ function App() {
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
+    localStorage.setItem('sa_activeProject', projectId)
+    localStorage.removeItem('sa_activeSubsystem')
     if (project) handleLoadProject(projectId)
   }
 
@@ -325,9 +357,9 @@ function App() {
     skipAutoSave.current = true
     try {
       const stack = await api.getStack(token, activeProject.id)
-      setSavedStack(stack?.items || [])
+      const committedItems = stack?.items || []
+      setSavedStack(committedItems)
       setSavedProviders(stack?.providers || [])
-      setSelectedItems(stack?.items || [])
       setSelectedProviders(stack?.providers || [])
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
@@ -336,7 +368,20 @@ function App() {
         subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
       }
       setDraftSubsystems(subState)
-      setActiveSubsystem(null)
+      // Restore correct items for active subsystem or base
+      if (activeSubsystem) {
+        const subData = subState[activeSubsystem.id] || subs.find((s) => s.id === activeSubsystem.id)
+        if (subData) {
+          const parentSet = new Set(committedItems)
+          ;(subData.additions || []).forEach((id) => parentSet.add(id))
+          setSelectedItems(Array.from(parentSet))
+        } else {
+          setActiveSubsystem(null)
+          setSelectedItems(committedItems)
+        }
+      } else {
+        setSelectedItems(committedItems)
+      }
     } finally {
       skipAutoSave.current = false
     }
@@ -354,6 +399,19 @@ function App() {
     return false
   }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders])
 
+  const pendingChanges = useMemo(() => {
+    if (!activeProject || !savedStack) return null
+    const savedSet = new Set(savedStack)
+    const currentSet = new Set(selectedItems)
+    const itemsAdded = selectedItems.filter((id) => !savedSet.has(id))
+    const itemsRemoved = savedStack.filter((id) => !currentSet.has(id))
+    const savedProvSet = new Set(savedProviders)
+    const currProvSet = new Set(selectedProviders)
+    const providersAdded = selectedProviders.filter((p) => !savedProvSet.has(p))
+    const providersRemoved = savedProviders.filter((p) => !currProvSet.has(p))
+    return { itemsAdded, itemsRemoved, providersAdded, providersRemoved }
+  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders])
+
   // Debounced auto-save (2s after last change, only when dirty)
   useEffect(() => {
     if (!token || !activeProject || !savedStack || skipAutoSave.current || !dirty) return
@@ -369,12 +427,9 @@ function App() {
   const handleSelectSubsystem = async (subId) => {
     if (!subId) {
       setActiveSubsystem(null)
+      localStorage.removeItem('sa_activeSubsystem')
       // When switching back to base, use draft stack if available
       if (hasDraft) {
-        // Load from draft's base stack
-        const draft = draftSubsystems
-        // The base stack items are in selectedItems when no subsystem active
-        // Reload from savedStack (committed) — the draft auto-save captures the full state
         if (savedStack) setSelectedItems([...savedStack])
       } else if (savedStack) {
         setSelectedItems([...savedStack])
@@ -383,6 +438,7 @@ function App() {
     }
     const sub = subsystems.find((s) => s.id === subId)
     setActiveSubsystem(sub || null)
+    localStorage.setItem('sa_activeSubsystem', subId)
     // Load subsystem state from draft if available, otherwise from committed
     const subData = draftSubsystems[subId] || sub
     if (subData && savedStack) {
@@ -1041,6 +1097,8 @@ function App() {
               dirty={dirty}
               hasDraft={hasDraft}
               draftStatus={draftStatus}
+              pendingChanges={pendingChanges}
+              itemsById={itemsById}
               onCommit={handleCommit}
               onDiscard={handleDiscard}
             />

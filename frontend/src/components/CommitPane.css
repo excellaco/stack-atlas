@@ -90,3 +90,19 @@
   font-size: 0.75rem;
   padding: 0.3rem 0.6rem;
 }
+
+.commit-pane-changes {
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.commit-pane-no-changes {
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.25rem 0;
+  margin-bottom: 0.25rem;
+}

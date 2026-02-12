@@ -102,10 +102,11 @@ export const handleProjects = async (method, path, event, cors) => {
     return jsonResponse(200, { data: stack }, cors);
   }
 
-  // --- Public view (no auth) ---
+  // --- Project view (auth required) ---
   const viewMatch = path.match(/^\/projects\/([^/]+)\/view$/);
 
   if (method === "GET" && viewMatch) {
+    await authenticate(auth);
     const projectId = decodeURIComponent(viewMatch[1]);
     const index = await getProjectIndex();
     const project = index.projects.find((p) => p.id === projectId);
