@@ -22,6 +22,7 @@ locals {
     parmjeet = { email = "parmjeet@stack-atlas.com", name = "Parmjeet", admin = true }
     uscis    = { email = "uscis@stack-atlas.com", name = "USCIS", admin = false }
     hhs      = { email = "hhs@stack-atlas.com", name = "HHS", admin = false }
+    e2e      = { email = "e2e@stack-atlas.com", name = "E2E", admin = true }
   }
 
   seed_admins = { for k, v in local.seed_users : k => v if v.admin }

@@ -36,6 +36,25 @@ jobs:
           npm run lint
           npm run fmt:tf:check
           npm run lint:tf
+      - name: Security scan (IaC)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: config
+          scan-ref: infrastructure/terraform
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+      - name: Security scan (secrets)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scanners: secret
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE }}
@@ -43,3 +62,15 @@ jobs:
           aws-region: us-east-1
       - name: Deploy
         run: bash scripts/deploy.sh
+      - name: E2E smoke test
+        run: |
+          SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id stack-atlas-e2e-config \
+            --query SecretString --output text)
+          export E2E_API_URL=$(echo "$SECRET" | jq -r .E2E_API_URL)
+          export E2E_SITE_URL=$(echo "$SECRET" | jq -r .E2E_SITE_URL)
+          export E2E_ADMIN_EMAIL=$(echo "$SECRET" | jq -r .E2E_ADMIN_EMAIL)
+          export E2E_ADMIN_PASSWORD=$(echo "$SECRET" | jq -r .E2E_ADMIN_PASSWORD)
+          export E2E_COGNITO_USER_POOL_ID=$(echo "$SECRET" | jq -r .E2E_COGNITO_USER_POOL_ID)
+          export E2E_COGNITO_CLIENT_ID=$(echo "$SECRET" | jq -r .E2E_COGNITO_CLIENT_ID)
+          npm run test:e2e

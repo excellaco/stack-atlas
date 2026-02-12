@@ -40,7 +40,7 @@ interface RouteMatch {
   id: string;
 }
 
-function checkLock(
+export function checkLock(
   existingDraft: Draft | null,
   userSub: string,
   cors: CorsHeaders
@@ -134,7 +134,7 @@ async function commitStack(user: User, projectId: string, draft: Draft): Promise
   return now;
 }
 
-function buildSubsystem(
+export function buildSubsystem(
   subId: string,
   subData: SubsystemDraftData,
   existing: Subsystem | undefined,
@@ -177,7 +177,7 @@ async function commitSubsystems(
   }
 }
 
-function buildSnapshot(draft: Draft): CommitSnapshot {
+export function buildSnapshot(draft: Draft): CommitSnapshot {
   const snapshot: CommitSnapshot = {
     stack: draft.stack?.items || [],
     providers: draft.stack?.providers || [],

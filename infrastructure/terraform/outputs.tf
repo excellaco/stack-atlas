@@ -32,3 +32,8 @@ output "github_deploy_role_arn" {
   description = "IAM role ARN for GitHub Actions OIDC deployments"
   value       = aws_iam_role.github_deploy.arn
 }
+
+output "e2e_secret_name" {
+  description = "Secrets Manager secret name for E2E config"
+  value       = aws_secretsmanager_secret.e2e_config.name
+}

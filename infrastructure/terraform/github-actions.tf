@@ -266,6 +266,32 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
+    sid       = "SecretsManagerList"
+    effect    = "Allow"
+    actions   = ["secretsmanager:ListSecrets"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "SecretsManagerManage"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:CreateSecret",
+      "secretsmanager:DeleteSecret",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:PutSecretValue",
+      "secretsmanager:TagResource",
+      "secretsmanager:UntagResource",
+      "secretsmanager:UpdateSecret"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:secretsmanager:us-east-1:${data.aws_caller_identity.current.account_id}:secret:${local.name_prefix}-*"
+    ]
+  }
+
+  statement {
     sid    = "LambdaFunctions"
     effect = "Allow"
     actions = [

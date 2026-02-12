@@ -106,6 +106,16 @@ export default tseslint.config(
     },
   },
 
+  // Test files: relax complexity rules
+  {
+    files: ["**/*.test.ts"],
+    rules: {
+      "max-lines-per-function": "off",
+      "max-lines": "off",
+      "sonarjs/no-duplicate-string": "off",
+    },
+  },
+
   // SonarJS: code quality rules
   sonarjs.configs.recommended,
 

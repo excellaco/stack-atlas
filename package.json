@@ -17,11 +17,15 @@
     "lint:tf": "tflint --recursive --chdir infrastructure/terraform",
     "fmt:tf": "terraform fmt -recursive infrastructure/terraform",
     "fmt:tf:check": "terraform fmt -check -recursive infrastructure/terraform",
-    "security": "trivy config --severity HIGH,CRITICAL infrastructure/terraform && trivy fs --severity HIGH,CRITICAL --scanners secret ."
+    "security": "trivy config --severity HIGH,CRITICAL infrastructure/terraform && trivy fs --severity HIGH,CRITICAL --scanners secret .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npx tsx e2e/smoke.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.2.3",
+    "amazon-cognito-identity-js": "^6.3.16",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -34,7 +38,9 @@
     "stylelint": "^17.2.0",
     "stylelint-config-standard": "^40.0.0",
     "ts-api-utils": "^2.4.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.55.0"
+    "typescript-eslint": "^8.55.0",
+    "vitest": "^4.0.18"
   }
 }
