@@ -5,23 +5,27 @@ export const setOnAuthError = (handler) => {
   authErrorHandler = handler;
 };
 
-const request = async (path, { method = "GET", token, body } = {}) => {
+function buildHeaders(token, body) {
   const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (body) headers["Content-Type"] = "application/json";
+  return headers;
+}
 
+async function handleError(response) {
+  const err = await response.json().catch(() => ({}));
+  if (response.status === 401 && authErrorHandler) authErrorHandler();
+  throw new Error(err.message ?? `Request failed (${response.status})`);
+}
+
+const request = async (path, { method = "GET", token, body } = {}) => {
   const response = await fetch(`${config.apiBaseUrl}${path}`, {
     method,
-    headers,
+    headers: buildHeaders(token, body),
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    if (response.status === 401 && authErrorHandler) authErrorHandler();
-    throw new Error(err.message ?? `Request failed (${response.status})`);
-  }
-
+  if (!response.ok) await handleError(response);
   if (response.status === 204) return null;
   const result = await response.json();
   return result.data ?? result;

@@ -1,5 +1,10 @@
 import { toggleInList } from "../utils/search";
 
+// --- Helper for stateful setter pattern ---
+const resolveSetter = (v, current) => (typeof v === "function" ? v(current) : v);
+
+// --- Slice creator ---
+
 export const createUiSlice = (set, get) => ({
   // Filter state
   query: "",
@@ -26,7 +31,7 @@ export const createUiSlice = (set, get) => ({
   // Session expired overlay
   sessionExpired: false,
 
-  // Confirm dialog (replaces browser confirm())
+  // Confirm dialog
   confirmDialog: null,
 
   // Actions
@@ -35,12 +40,10 @@ export const createUiSlice = (set, get) => ({
     set((s) => ({ selectedCategories: toggleInList(s.selectedCategories, id) })),
   toggleType: (type) => set((s) => ({ selectedTypes: toggleInList(s.selectedTypes, type) })),
   toggleTag: (tag) => set((s) => ({ selectedTags: toggleInList(s.selectedTags, tag) })),
-  setIsCategoriesOpen: (v) => set({ isCategoriesOpen: typeof v === "function" ? v(false) : v }),
-  setIsProvidersOpen: (v) =>
-    set((s) => ({ isProvidersOpen: typeof v === "function" ? v(s.isProvidersOpen) : v })),
-  setIsTypesOpen: (v) =>
-    set((s) => ({ isTypesOpen: typeof v === "function" ? v(s.isTypesOpen) : v })),
-  setIsTagsOpen: (v) => set((s) => ({ isTagsOpen: typeof v === "function" ? v(s.isTagsOpen) : v })),
+  setIsCategoriesOpen: (v) => set({ isCategoriesOpen: resolveSetter(v, false) }),
+  setIsProvidersOpen: (v) => set((s) => ({ isProvidersOpen: resolveSetter(v, s.isProvidersOpen) })),
+  setIsTypesOpen: (v) => set((s) => ({ isTypesOpen: resolveSetter(v, s.isTypesOpen) })),
+  setIsTagsOpen: (v) => set((s) => ({ isTagsOpen: resolveSetter(v, s.isTagsOpen) })),
   setViewMode: (viewMode) => set({ viewMode }),
   setDensity: (density) => set({ density }),
   toggleCategoryCollapse: (categoryId) =>
@@ -51,24 +54,16 @@ export const createUiSlice = (set, get) => ({
       return { collapsedCategories: next };
     }),
   setExportFormat: (exportFormat) => set({ exportFormat }),
-  setIsExportOpen: (v) =>
-    set((s) => ({ isExportOpen: typeof v === "function" ? v(s.isExportOpen) : v })),
+  setIsExportOpen: (v) => set((s) => ({ isExportOpen: resolveSetter(v, s.isExportOpen) })),
   setShowAdmin: (showAdmin) => set({ showAdmin }),
   setSessionExpired: (sessionExpired) => set({ sessionExpired }),
   requestConfirm: (config) =>
-    new Promise((resolve) => {
-      set({ confirmDialog: { ...config, resolve } });
-    }),
+    new Promise((resolve) => set({ confirmDialog: { ...config, resolve } })),
   resolveConfirm: (result) => {
     const { confirmDialog } = get();
     if (confirmDialog?.resolve) confirmDialog.resolve(result);
     set({ confirmDialog: null });
   },
   resetFilters: () =>
-    set({
-      query: "",
-      selectedCategories: [],
-      selectedTypes: [],
-      selectedTags: [],
-    }),
+    set({ query: "", selectedCategories: [], selectedTypes: [], selectedTags: [] }),
 });

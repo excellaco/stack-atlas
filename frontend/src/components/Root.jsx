@@ -6,6 +6,21 @@ import ProjectExplorer from "./ProjectExplorer";
 import ConfirmModal from "./ConfirmModal";
 import "./Root.css";
 
+function AppFooter() {
+  return (
+    <footer className="app-footer">
+      <span>Copyright &copy; {new Date().getFullYear()}</span>
+      <a href="https://www.excella.com" target="_blank" rel="noreferrer">
+        <img
+          src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg"
+          alt="Excella"
+          height="14"
+        />
+      </a>
+    </footer>
+  );
+}
+
 export default function Root() {
   const user = useStore((s) => s.user);
   const authLoading = useStore((s) => s.authLoading);
@@ -39,7 +54,6 @@ export default function Root() {
         </div>
         <AuthBar />
       </div>
-
       <div className="root-body">
         <aside className="root-sidebar">
           <ProjectExplorer />
@@ -48,17 +62,7 @@ export default function Root() {
           <Outlet />
         </main>
       </div>
-
-      <footer className="app-footer">
-        <span>Copyright &copy; {new Date().getFullYear()}</span>
-        <a href="https://www.excella.com" target="_blank" rel="noreferrer">
-          <img
-            src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg"
-            alt="Excella"
-            height="14"
-          />
-        </a>
-      </footer>
+      <AppFooter />
       <ConfirmModal />
     </div>
   );

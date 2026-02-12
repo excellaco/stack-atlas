@@ -6,6 +6,17 @@ import { handleDrafts } from "./routes/drafts.js";
 
 const routeModules = [handleProjects, handleSubsystems, handleDrafts, handleAdmin];
 
+function errorStatus(message) {
+  if (
+    message.includes("Missing Authorization") ||
+    message.includes("Missing Bearer") ||
+    message.includes("Invalid token")
+  ) {
+    return 401;
+  }
+  return 400;
+}
+
 export const handler = async (event) => {
   const method = event.requestContext.http.method.toUpperCase();
   const path = event.rawPath;
@@ -18,16 +29,9 @@ export const handler = async (event) => {
       const response = await handle(method, path, event, cors);
       if (response) return response;
     }
-
     return jsonResponse(404, { message: "Not found" }, cors);
   } catch (error) {
     const message = error.message || "Internal error";
-    const statusCode =
-      message.includes("Missing Authorization") ||
-      message.includes("Missing Bearer") ||
-      message.includes("Invalid token")
-        ? 401
-        : 400;
-    return jsonResponse(statusCode, { message }, cors);
+    return jsonResponse(errorStatus(message), { message }, cors);
   }
 };

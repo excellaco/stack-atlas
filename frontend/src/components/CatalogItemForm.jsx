@@ -1,23 +1,134 @@
 import { useEffect, useState } from "react";
 
-export default function CatalogItemForm({
-  item,
-  description: initialDesc,
-  categories,
-  types,
-  onSave,
-  onCancel,
-}) {
-  const [id, setId] = useState(item?.id || "");
-  const [name, setName] = useState(item?.name || "");
-  const [category, setCategory] = useState(item?.category || categories[0]?.id || "");
-  const [type, setType] = useState(item?.type || types[0] || "");
-  const [description, setDescription] = useState(initialDesc || "");
-  const [synonyms, setSynonyms] = useState((item?.synonyms || []).join(", "));
-  const [parents, setParents] = useState((item?.parents || []).join(", "));
-  const [commonWith, setCommonWith] = useState((item?.commonWith || []).join(", "));
-  const [tags, setTags] = useState((item?.tags || []).join(", "));
+function parseCommaSeparated(value) {
+  if (!value.trim()) return undefined;
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
+function joinArray(arr) {
+  return (arr || []).join(", ");
+}
+
+function or(val, fallback) {
+  return val ?? fallback;
+}
+
+function TextInput({ placeholder, value, onChange, required }) {
+  return (
+    <input
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+    />
+  );
+}
+
+function SelectInput({ value, onChange, options, labelKey }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      {options.map((opt) => {
+        const val = labelKey ? opt.id : opt;
+        const label = labelKey ? opt[labelKey] : opt;
+        return (
+          <option key={val} value={val}>
+            {label}
+          </option>
+        );
+      })}
+    </select>
+  );
+}
+
+function buildFormResult(fields) {
+  const result = {
+    id: fields.id.trim(),
+    name: fields.name.trim(),
+    category: fields.category,
+    type: fields.type,
+  };
+  const optionalFields = [
+    ["synonyms", fields.synonyms],
+    ["parents", fields.parents],
+    ["commonWith", fields.commonWith],
+    ["tags", fields.tags],
+  ];
+  for (const [key, val] of optionalFields) {
+    const parsed = parseCommaSeparated(val);
+    if (parsed) result[key] = parsed;
+  }
+  return result;
+}
+
+function getItemDefaults(item) {
+  return {
+    id: or(item?.id, ""),
+    name: or(item?.name, ""),
+    category: or(item?.category, ""),
+    type: or(item?.type, ""),
+    synonyms: joinArray(item?.synonyms),
+    parents: joinArray(item?.parents),
+    commonWith: joinArray(item?.commonWith),
+    tags: joinArray(item?.tags),
+  };
+}
+
+function getInitialState(item, initialDesc, categories, types) {
+  const defaults = getItemDefaults(item);
+  return {
+    ...defaults,
+    category: defaults.category || or(categories[0]?.id, ""),
+    type: defaults.type || or(types[0], ""),
+    description: or(initialDesc, ""),
+  };
+}
+
+function CatalogFormFields({ state, setters }) {
+  return (
+    <>
+      <TextInput placeholder="ID" value={state.id} onChange={setters.setId} required />
+      <TextInput placeholder="Name" value={state.name} onChange={setters.setName} required />
+      <SelectInput
+        value={state.category}
+        onChange={setters.setCategory}
+        options={setters.categories}
+        labelKey="name"
+      />
+      <SelectInput value={state.type} onChange={setters.setType} options={setters.types} />
+      <textarea
+        placeholder="Description"
+        value={state.description}
+        onChange={(e) => setters.setDescription(e.target.value)}
+        rows={2}
+      />
+      <TextInput
+        placeholder="Synonyms (comma-separated)"
+        value={state.synonyms}
+        onChange={setters.setSynonyms}
+      />
+      <TextInput
+        placeholder="Parents (comma-separated IDs)"
+        value={state.parents}
+        onChange={setters.setParents}
+      />
+      <TextInput
+        placeholder="Common with (comma-separated IDs)"
+        value={state.commonWith}
+        onChange={setters.setCommonWith}
+      />
+      <TextInput
+        placeholder="Tags (comma-separated)"
+        value={state.tags}
+        onChange={setters.setTags}
+      />
+    </>
+  );
+}
+
+function useAutoId(item, name, setId) {
   useEffect(() => {
     if (!item && name) {
       setId(
@@ -27,97 +138,58 @@ export default function CatalogItemForm({
           .replace(/^-|-$/g, "")
       );
     }
-  }, [name, item]);
+  }, [name, item, setId]);
+}
+
+function useFormState(item, initialDesc, categories, types) {
+  const init = getInitialState(item, initialDesc, categories, types);
+  const [id, setId] = useState(init.id);
+  const [name, setName] = useState(init.name);
+  const [category, setCategory] = useState(init.category);
+  const [type, setType] = useState(init.type);
+  const [description, setDescription] = useState(init.description);
+  const [synonyms, setSynonyms] = useState(init.synonyms);
+  const [parents, setParents] = useState(init.parents);
+  const [commonWith, setCommonWith] = useState(init.commonWith);
+  const [tags, setTags] = useState(init.tags);
+  useAutoId(item, name, setId);
+  const state = { id, name, category, type, description, synonyms, parents, commonWith, tags };
+  const setters = {
+    setId,
+    setName,
+    setCategory,
+    setType,
+    setDescription,
+    setSynonyms,
+    setParents,
+    setCommonWith,
+    setTags,
+    categories,
+    types,
+  };
+  return { state, setters };
+}
+
+export default function CatalogItemForm({
+  item,
+  description: initialDesc,
+  categories,
+  types,
+  onSave,
+  onCancel,
+}) {
+  const { state, setters } = useFormState(item, initialDesc, categories, types);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const parsed = {
-      id: id.trim(),
-      name: name.trim(),
-      category,
-      type,
-      ...(synonyms.trim()
-        ? {
-            synonyms: synonyms
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          }
-        : {}),
-      ...(parents.trim()
-        ? {
-            parents: parents
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          }
-        : {}),
-      ...(commonWith.trim()
-        ? {
-            commonWith: commonWith
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          }
-        : {}),
-      ...(tags.trim()
-        ? {
-            tags: tags
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          }
-        : {}),
-    };
-    onSave(parsed, description.trim());
+    onSave(buildFormResult(state), state.description.trim());
   };
 
   return (
     <form className="catalog-form" onSubmit={handleSubmit}>
-      <input placeholder="ID" value={id} onChange={(e) => setId(e.target.value)} required />
-      <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <select value={category} onChange={(e) => setCategory(e.target.value)}>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <select value={type} onChange={(e) => setType(e.target.value)}>
-        {types.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      <textarea
-        placeholder="Description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        rows={2}
-      />
-      <input
-        placeholder="Synonyms (comma-separated)"
-        value={synonyms}
-        onChange={(e) => setSynonyms(e.target.value)}
-      />
-      <input
-        placeholder="Parents (comma-separated IDs)"
-        value={parents}
-        onChange={(e) => setParents(e.target.value)}
-      />
-      <input
-        placeholder="Common with (comma-separated IDs)"
-        value={commonWith}
-        onChange={(e) => setCommonWith(e.target.value)}
-      />
-      <input
-        placeholder="Tags (comma-separated)"
-        value={tags}
-        onChange={(e) => setTags(e.target.value)}
-      />
+      <CatalogFormFields state={state} setters={setters} />
       <div className="catalog-form-actions">
-        <button type="submit" className="primary" disabled={!id.trim() || !name.trim()}>
+        <button type="submit" className="primary" disabled={!state.id.trim() || !state.name.trim()}>
           Save
         </button>
         <button type="button" className="ghost" onClick={onCancel}>

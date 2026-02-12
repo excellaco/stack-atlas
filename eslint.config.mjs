@@ -25,9 +25,10 @@ export default [
       sourceType: "module",
     },
     rules: {
-      complexity: ["warn", 20],
-      "max-lines": ["warn", { max: 400, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["warn", { max: 100, skipBlankLines: true, skipComments: true }],
+      complexity: ["warn", 10],
+      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["warn", { max: 50, skipBlankLines: true, skipComments: true }],
+      "max-depth": ["warn", 4],
     },
   },
 

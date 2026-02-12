@@ -3,14 +3,7 @@ import { useStore } from "../store";
 import { selectIsAdmin } from "../store/selectors";
 import "./AuthBar.css";
 
-export default function AuthBar() {
-  const user = useStore((s) => s.user);
-  const signIn = useStore((s) => s.signIn);
-  const signOut = useStore((s) => s.signOut);
-  const isAdmin = useStore((s) => selectIsAdmin(s));
-  const setShowAdmin = useStore((s) => s.setShowAdmin);
-
-  const [showForm, setShowForm] = useState(false);
+function SignInForm({ onSignIn, onCancel }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,16 +14,50 @@ export default function AuthBar() {
     setError("");
     setLoading(true);
     try {
-      await signIn(email, password);
-      setShowForm(false);
-      setEmail("");
-      setPassword("");
+      await onSignIn(email, password);
+      onCancel();
     } catch (err) {
       setError(err.message || "Sign in failed");
     } finally {
       setLoading(false);
     }
   };
+
+  return (
+    <form className="auth-form" onSubmit={handleSubmit}>
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        autoFocus
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+      />
+      <button type="submit" className="primary" disabled={loading}>
+        {loading ? "..." : "Sign in"}
+      </button>
+      <button type="button" className="ghost" onClick={onCancel}>
+        Cancel
+      </button>
+      {error && <span className="auth-error">{error}</span>}
+    </form>
+  );
+}
+
+export default function AuthBar() {
+  const user = useStore((s) => s.user);
+  const signIn = useStore((s) => s.signIn);
+  const signOut = useStore((s) => s.signOut);
+  const isAdmin = useStore((s) => selectIsAdmin(s));
+  const setShowAdmin = useStore((s) => s.setShowAdmin);
+  const [showForm, setShowForm] = useState(false);
 
   if (user) {
     return (
@@ -51,30 +78,7 @@ export default function AuthBar() {
   return (
     <div className="auth-bar">
       {showForm ? (
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit" className="primary" disabled={loading}>
-            {loading ? "..." : "Sign in"}
-          </button>
-          <button type="button" className="ghost" onClick={() => setShowForm(false)}>
-            Cancel
-          </button>
-          {error && <span className="auth-error">{error}</span>}
-        </form>
+        <SignInForm onSignIn={signIn} onCancel={() => setShowForm(false)} />
       ) : (
         <button type="button" className="ghost" onClick={() => setShowForm(true)}>
           Sign in

@@ -4,21 +4,57 @@ export const getParentName = (item, itemsById) => {
   return itemsById.get(parentId)?.name;
 };
 
-export const computeDiff = (prevSnapshot, currSnapshot) => {
+// --- Helpers for set-based diffing ---
+
+function diffSets(prevSet, currSet) {
+  const added = [...currSet].filter((x) => !prevSet.has(x));
+  const removed = [...prevSet].filter((x) => !currSet.has(x));
+  return { added, removed };
+}
+
+function computeStackDiff(prevSnapshot, currSnapshot) {
   const prevStack = new Set(prevSnapshot?.stack || []);
   const currStack = new Set(currSnapshot?.stack || []);
-
-  const stackAdded = [...currStack].filter((id) => !prevStack.has(id));
-  const stackRemoved = [...prevStack].filter((id) => !currStack.has(id));
+  const { added: stackAdded, removed: stackRemoved } = diffSets(prevStack, currStack);
 
   const prevProviders = new Set(prevSnapshot?.providers || []);
   const currProviders = new Set(currSnapshot?.providers || []);
-  const providersAdded = [...currProviders].filter((p) => !prevProviders.has(p));
-  const providersRemoved = [...prevProviders].filter((p) => !currProviders.has(p));
+  const { added: providersAdded, removed: providersRemoved } = diffSets(
+    prevProviders,
+    currProviders
+  );
 
+  return { stackAdded, stackRemoved, providersAdded, providersRemoved };
+}
+
+function diffSubsystemField(prev, curr, field) {
+  return diffSets(new Set(prev[field] || []), new Set(curr[field] || []));
+}
+
+function computeSingleSubsystemChange(id, prevSubs, currSubs) {
+  const prev = prevSubs[id] || {};
+  const curr = currSubs[id] || {};
+  const additions = diffSubsystemField(prev, curr, "additions");
+  const exclusions = diffSubsystemField(prev, curr, "exclusions");
+  const totalChanges =
+    additions.added.length +
+    additions.removed.length +
+    exclusions.added.length +
+    exclusions.removed.length;
+  if (!totalChanges) return null;
+  return {
+    id,
+    name: curr.name || id,
+    additionsAdded: additions.added,
+    additionsRemoved: additions.removed,
+    exclusionsAdded: exclusions.added,
+    exclusionsRemoved: exclusions.removed,
+  };
+}
+
+function computeSubsystemChanges(prevSnapshot, currSnapshot) {
   const prevSubs = prevSnapshot?.subsystems || {};
   const currSubs = currSnapshot?.subsystems || {};
-
   const prevSubIds = new Set(Object.keys(prevSubs));
   const currSubIds = new Set(Object.keys(currSubs));
 
@@ -32,47 +68,18 @@ export const computeDiff = (prevSnapshot, currSnapshot) => {
 
   const subsystemsChanged = [...currSubIds]
     .filter((id) => prevSubIds.has(id))
-    .map((id) => {
-      const prev = prevSubs[id] || {};
-      const curr = currSubs[id] || {};
-      const prevAdd = new Set(prev.additions || []);
-      const currAdd = new Set(curr.additions || []);
-      const prevExcl = new Set(prev.exclusions || []);
-      const currExcl = new Set(curr.exclusions || []);
-
-      const additionsAdded = [...currAdd].filter((x) => !prevAdd.has(x));
-      const additionsRemoved = [...prevAdd].filter((x) => !currAdd.has(x));
-      const exclusionsAdded = [...currExcl].filter((x) => !prevExcl.has(x));
-      const exclusionsRemoved = [...prevExcl].filter((x) => !currExcl.has(x));
-
-      if (
-        !additionsAdded.length &&
-        !additionsRemoved.length &&
-        !exclusionsAdded.length &&
-        !exclusionsRemoved.length
-      ) {
-        return null;
-      }
-      return {
-        id,
-        name: curr.name || id,
-        additionsAdded,
-        additionsRemoved,
-        exclusionsAdded,
-        exclusionsRemoved,
-      };
-    })
+    .map((id) => computeSingleSubsystemChange(id, prevSubs, currSubs))
     .filter(Boolean);
 
-  return {
-    stackAdded,
-    stackRemoved,
-    providersAdded,
-    providersRemoved,
-    subsystemsAdded,
-    subsystemsRemoved,
-    subsystemsChanged,
-  };
+  return { subsystemsAdded, subsystemsRemoved, subsystemsChanged };
+}
+
+// --- Main diff function ---
+
+export const computeDiff = (prevSnapshot, currSnapshot) => {
+  const stackDiff = computeStackDiff(prevSnapshot, currSnapshot);
+  const subDiff = computeSubsystemChanges(prevSnapshot, currSnapshot);
+  return { ...stackDiff, ...subDiff };
 };
 
 export const resolveItemName = (id, itemsById) => {
