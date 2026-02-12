@@ -7,7 +7,7 @@ import {
   descriptionById as staticDescriptions,
   enrichItems
 } from './data/stackData'
-import { signIn, signOut, getSession, parseIdToken } from './auth'
+import { signIn, signOut, getSession, parseIdToken, getFreshToken } from './auth'
 import * as api from './api'
 import { buildTree, flattenTree } from './utils/tree'
 import { buildExportData, formatExport } from './utils/export'
@@ -44,6 +44,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   // Project state
   const [projects, setProjects] = useState([])
@@ -103,8 +104,9 @@ function App() {
   ]
   const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
 
-  // Restore session on mount
+  // Restore session on mount + wire up 401 handler
   useEffect(() => {
+    api.setOnAuthError(() => setSessionExpired(true))
     getSession().then((session) => {
       if (session) {
         const parsed = parseIdToken(session)
@@ -113,6 +115,20 @@ function App() {
       }
     }).catch(() => {}).finally(() => setAuthLoading(false))
   }, [])
+
+  // Refresh token every 10 minutes to stay ahead of the 1-hour Cognito expiry
+  useEffect(() => {
+    if (!token) return
+    const interval = setInterval(async () => {
+      const fresh = await getFreshToken()
+      if (fresh) {
+        setToken(fresh)
+      } else {
+        setSessionExpired(true)
+      }
+    }, 10 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [token])
 
   // Load catalog from API when authenticated
   useEffect(() => {
@@ -1178,6 +1194,18 @@ function App() {
             setCatalogSource('api')
           }}
         />
+      )}
+
+      {sessionExpired && (
+        <div className="session-expired-overlay" onClick={() => { setSessionExpired(false); handleSignOut() }}>
+          <div className="session-expired-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Session Expired</h3>
+            <p>Your session has expired. Please sign in again to continue.</p>
+            <button type="button" className="primary" onClick={() => { setSessionExpired(false); handleSignOut() }}>
+              Sign in again
+            </button>
+          </div>
+        </div>
       )}
 
       <footer className="app-footer">

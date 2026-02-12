@@ -1,5 +1,8 @@
 import { config } from "./config";
 
+let authErrorHandler = null;
+export const setOnAuthError = (handler) => { authErrorHandler = handler; };
+
 const request = async (path, { method = "GET", token, body } = {}) => {
   const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -13,6 +16,7 @@ const request = async (path, { method = "GET", token, body } = {}) => {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
+    if (response.status === 401 && authErrorHandler) authErrorHandler();
     throw new Error(err.message ?? `Request failed (${response.status})`);
   }
 

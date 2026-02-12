@@ -73,3 +73,11 @@ export const parseIdToken = (session) => {
     groups: payload["cognito:groups"] || []
   };
 };
+
+/** Call getSession() which auto-refreshes via the stored refresh token.
+ *  Returns the fresh JWT string, or null if the session is gone. */
+export const getFreshToken = async () => {
+  const session = await getSession();
+  if (!session) return null;
+  return session.getIdToken().getJwtToken();
+};
