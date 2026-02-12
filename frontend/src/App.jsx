@@ -582,13 +582,17 @@ function App() {
 
           <div className="panel-header">
             <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}</h3>
-            <div className="copy-actions">
-              <button type="button" className="ghost" onClick={() => handleCopyAs('markdown')}>
-                Copy Markdown
+            <div className="copy-menu">
+              <button type="button" className="copy-trigger" title="Copy stack">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
               </button>
-              <button type="button" className="ghost" onClick={() => handleCopyAs('json')}>
-                Copy JSON
-              </button>
+              <div className="copy-dropdown">
+                <button type="button" onClick={() => handleCopyAs('markdown')}>Markdown</button>
+                <button type="button" onClick={() => handleCopyAs('json')}>JSON</button>
+              </div>
             </div>
           </div>
 
