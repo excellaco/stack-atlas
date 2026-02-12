@@ -46,7 +46,7 @@ export const createUiSlice = (set: StoreSet, get: StoreGet): UiSlice => ({
   toggleTag: (tag: string): void =>
     set((s) => ({ selectedTags: toggleInList(s.selectedTags, tag) })),
   setIsCategoriesOpen: (v: boolean | ((prev: boolean) => boolean)): void =>
-    set({ isCategoriesOpen: resolveSetter(v, false) }),
+    set((s) => ({ isCategoriesOpen: resolveSetter(v, s.isCategoriesOpen) })),
   setIsProvidersOpen: (v: boolean | ((prev: boolean) => boolean)): void =>
     set((s) => ({ isProvidersOpen: resolveSetter(v, s.isProvidersOpen) })),
   setIsTypesOpen: (v: boolean | ((prev: boolean) => boolean)): void =>

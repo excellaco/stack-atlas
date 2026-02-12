@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useStore } from "./store";
 import { setupSubscriptions } from "./store/subscriptions";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Root from "./components/Root";
 import LandingContent from "./components/LandingContent";
 import ProjectView from "./components/ProjectView";
@@ -16,15 +17,38 @@ void useStore.getState().restoreSession();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route element={<Root />}>
-          <Route index element={<LandingContent />} />
-          <Route path="/view/:projectId/:subsystemId?" element={<ProjectView />} />
-        </Route>
-        <Route path="/edit/:projectId/:subsystemId?" element={<Editor />} />
-        <Route path="/sandbox" element={<Editor sandbox />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary name="App">
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Root />}>
+            <Route index element={<LandingContent />} />
+            <Route
+              path="/view/:projectId/:subsystemId?"
+              element={
+                <ErrorBoundary name="Project view">
+                  <ProjectView />
+                </ErrorBoundary>
+              }
+            />
+          </Route>
+          <Route
+            path="/edit/:projectId/:subsystemId?"
+            element={
+              <ErrorBoundary name="Editor">
+                <Editor />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/sandbox"
+            element={
+              <ErrorBoundary name="Sandbox">
+                <Editor sandbox />
+              </ErrorBoundary>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );

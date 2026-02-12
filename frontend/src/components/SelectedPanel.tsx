@@ -1,6 +1,7 @@
 import { useStore } from "../store";
 import CommitPane from "./CommitPane";
 import CommitLog from "./CommitLog";
+import ErrorBoundary from "./ErrorBoundary";
 import type { EnrichedItem, Category, ExportFormat } from "../types";
 
 interface CopyMenuProps {
@@ -99,8 +100,14 @@ function ProjectContext({
         {activeSubsystem && <span> / {activeSubsystem.name}</span>}
         {hasActualChanges && <span className="draft-badge">Draft</span>}
       </div>
-      {token && <CommitPane />}
-      <CommitLog />
+      {token && (
+        <ErrorBoundary name="Commit pane">
+          <CommitPane />
+        </ErrorBoundary>
+      )}
+      <ErrorBoundary name="Commit log">
+        <CommitLog />
+      </ErrorBoundary>
     </>
   );
 }

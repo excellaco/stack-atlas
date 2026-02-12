@@ -15,6 +15,7 @@ import AppFooter from "./AppFooter";
 import CategoryStyles from "./CategoryStyles";
 import ConfirmModal from "./ConfirmModal";
 import EditorTopBar from "./EditorTopBar";
+import ErrorBoundary from "./ErrorBoundary";
 import FilterPanel from "./FilterPanel";
 import ListPanel from "./ListPanel";
 import SelectedPanel from "./SelectedPanel";
@@ -81,29 +82,37 @@ export default function Editor({ sandbox }: Readonly<Props>): React.JSX.Element 
   return (
     <div className="app" data-density={density}>
       <CategoryStyles categories={catalogCategories} />
-      <EditorTopBar
-        sandbox={sandbox}
-        onSwitchToView={() => {
-          void handleSwitchToView();
-        }}
-      />
-      <main className="main-grid">
-        <FilterPanel />
-        <ListPanel
-          sections={sections}
-          selectedSet={selectedSet}
-          inheritedSet={inheritedSet}
-          itemsById={itemsById}
-        />
-        <SelectedPanel
+      <ErrorBoundary name="Editor toolbar">
+        <EditorTopBar
           sandbox={sandbox}
-          selectedByCategory={selectedByCategory}
-          inheritedSet={inheritedSet}
-          handleCopyAs={(format) => {
-            void handleCopyAs(format);
+          onSwitchToView={() => {
+            void handleSwitchToView();
           }}
-          hasActualChanges={hasActualChanges}
         />
+      </ErrorBoundary>
+      <main className="main-grid">
+        <ErrorBoundary name="Filters">
+          <FilterPanel />
+        </ErrorBoundary>
+        <ErrorBoundary name="Catalog">
+          <ListPanel
+            sections={sections}
+            selectedSet={selectedSet}
+            inheritedSet={inheritedSet}
+            itemsById={itemsById}
+          />
+        </ErrorBoundary>
+        <ErrorBoundary name="Selection">
+          <SelectedPanel
+            sandbox={sandbox}
+            selectedByCategory={selectedByCategory}
+            inheritedSet={inheritedSet}
+            handleCopyAs={(format) => {
+              void handleCopyAs(format);
+            }}
+            hasActualChanges={hasActualChanges}
+          />
+        </ErrorBoundary>
       </main>
       {showAdmin && token && <AdminPanel />}
       <SessionExpiredOverlay />

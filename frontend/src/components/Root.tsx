@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { useStore } from "../store";
 import AuthBar from "./AuthBar";
+import ErrorBoundary from "./ErrorBoundary";
 import SplashScreen from "./SplashScreen";
 import ProjectExplorer from "./ProjectExplorer";
 import ConfirmModal from "./ConfirmModal";
@@ -56,10 +57,14 @@ export default function Root(): React.JSX.Element {
       </div>
       <div className="root-body">
         <aside className="root-sidebar">
-          <ProjectExplorer />
+          <ErrorBoundary name="Project explorer">
+            <ProjectExplorer />
+          </ErrorBoundary>
         </aside>
         <main className="root-content">
-          <Outlet />
+          <ErrorBoundary name="Content">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <AppFooter />
