@@ -17,11 +17,11 @@ resource "aws_cognito_user_group" "admins" {
 
 locals {
   seed_users = {
-    chris    = { email = "chris@stack-atlas.com",    name = "Chris",    admin = true }
-    dane     = { email = "dane@stack-atlas.com",     name = "Dane",     admin = true }
+    chris    = { email = "chris@stack-atlas.com", name = "Chris", admin = true }
+    dane     = { email = "dane@stack-atlas.com", name = "Dane", admin = true }
     parmjeet = { email = "parmjeet@stack-atlas.com", name = "Parmjeet", admin = true }
-    uscis    = { email = "uscis@stack-atlas.com",    name = "USCIS",    admin = false }
-    hhs      = { email = "hhs@stack-atlas.com",      name = "HHS",      admin = false }
+    uscis    = { email = "uscis@stack-atlas.com", name = "USCIS", admin = false }
+    hhs      = { email = "hhs@stack-atlas.com", name = "HHS", admin = false }
   }
 
   seed_admins = { for k, v in local.seed_users : k => v if v.admin }

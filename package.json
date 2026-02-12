@@ -13,7 +13,11 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit && tsc -p backend/tsconfig.json --noEmit",
     "typecheck:frontend": "tsc -p frontend/tsconfig.json --noEmit",
-    "typecheck:backend": "tsc -p backend/tsconfig.json --noEmit"
+    "typecheck:backend": "tsc -p backend/tsconfig.json --noEmit",
+    "lint:tf": "tflint --recursive --chdir infrastructure/terraform",
+    "fmt:tf": "terraform fmt -recursive infrastructure/terraform",
+    "fmt:tf:check": "terraform fmt -check -recursive infrastructure/terraform",
+    "security": "trivy config --severity HIGH,CRITICAL infrastructure/terraform && trivy fs --severity HIGH,CRITICAL --scanners secret ."
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

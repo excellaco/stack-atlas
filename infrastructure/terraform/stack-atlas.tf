@@ -4,6 +4,28 @@ resource "aws_s3_bucket" "data" {
   bucket = local.data_bucket
 }
 
+resource "aws_kms_key" "data_bucket" {
+  description             = "KMS key for ${local.name_prefix}-data S3 bucket encryption"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "data_bucket" {
+  name          = "alias/${local.name_prefix}-data-bucket"
+  target_key_id = aws_kms_key.data_bucket.key_id
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "data" {
+  bucket = aws_s3_bucket.data.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.data_bucket.arn
+    }
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "data" {
   bucket = aws_s3_bucket.data.id
 

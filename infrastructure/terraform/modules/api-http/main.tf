@@ -1,3 +1,17 @@
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.0"
+    }
+  }
+}
+
 locals {
   safe_name = replace(var.name, "/", "-")
   default_tags = {
@@ -99,19 +113,19 @@ resource "aws_apigatewayv2_stage" "api" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_access.arn
     format = jsonencode({
-      requestId             = "$context.requestId"
-      ip                    = "$context.identity.sourceIp"
-      requestTime           = "$context.requestTime"
-      httpMethod            = "$context.httpMethod"
-      routeKey              = "$context.routeKey"
-      path                  = "$context.path"
-      status                = "$context.status"
-      protocol              = "$context.protocol"
-      responseLength        = "$context.responseLength"
-      integrationError      = "$context.integrationErrorMessage"
-      integrationStatus     = "$context.integration.status"
-      integrationLatency    = "$context.integration.latency"
-      integrationRequestId  = "$context.integration.requestId"
+      requestId            = "$context.requestId"
+      ip                   = "$context.identity.sourceIp"
+      requestTime          = "$context.requestTime"
+      httpMethod           = "$context.httpMethod"
+      routeKey             = "$context.routeKey"
+      path                 = "$context.path"
+      status               = "$context.status"
+      protocol             = "$context.protocol"
+      responseLength       = "$context.responseLength"
+      integrationError     = "$context.integrationErrorMessage"
+      integrationStatus    = "$context.integration.status"
+      integrationLatency   = "$context.integration.latency"
+      integrationRequestId = "$context.integration.requestId"
     })
   }
 }

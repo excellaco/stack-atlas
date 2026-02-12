@@ -1,3 +1,23 @@
+resource "aws_wafv2_web_acl" "cloudfront" {
+  name        = "${local.resource_prefix}-cf-waf"
+  description = "WAF Web ACL for ${var.hostname} CloudFront distribution"
+  scope       = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${replace(local.resource_prefix, "-", "")}CfWaf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = merge(local.default_tags, {
+    Name = "${local.resource_prefix}-cf-waf"
+  })
+}
+
 resource "aws_cloudfront_origin_access_control" "website" {
   name                              = "${local.resource_prefix}-oac"
   description                       = "OAC for ${var.hostname}"
@@ -12,6 +32,7 @@ resource "aws_cloudfront_distribution" "website" {
   default_root_object = "index.html"
   aliases             = [var.hostname]
   price_class         = "PriceClass_100"
+  web_acl_id          = var.waf_acl_arn != "" ? var.waf_acl_arn : aws_wafv2_web_acl.cloudfront.arn
 
   origin {
     domain_name              = aws_s3_bucket.website.bucket_regional_domain_name

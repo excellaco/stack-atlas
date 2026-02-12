@@ -20,10 +20,10 @@ output "cognito_client_id" {
 
 output "seed_user_passwords" {
   description = "Seed user passwords (temporary, remove after Entra ID integration)"
-  value       = { for k, v in local.seed_users : k => {
-    email = v.email
-    admin = v.admin
+  value = { for k, v in local.seed_users : k => {
+    email    = v.email
+    admin    = v.admin
     password = random_password.seed[k].result
-  }}
+  } }
   sensitive = true
 }

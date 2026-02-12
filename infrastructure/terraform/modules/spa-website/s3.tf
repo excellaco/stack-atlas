@@ -6,6 +6,32 @@ resource "aws_s3_bucket" "website" {
   })
 }
 
+resource "aws_kms_key" "website_bucket" {
+  description             = "KMS key for ${local.resource_prefix} S3 bucket encryption"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+
+  tags = merge(local.default_tags, {
+    Name = "${local.resource_prefix}-bucket-key"
+  })
+}
+
+resource "aws_kms_alias" "website_bucket" {
+  name          = "alias/${local.resource_prefix}-bucket"
+  target_key_id = aws_kms_key.website_bucket.key_id
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.website_bucket.arn
+    }
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 

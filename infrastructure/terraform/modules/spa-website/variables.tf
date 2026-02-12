@@ -23,3 +23,9 @@ variable "bucket_name" {
   description = "S3 bucket name for the SPA assets"
   type        = string
 }
+
+variable "waf_acl_arn" {
+  description = "ARN of a WAF Web ACL to associate with the CloudFront distribution. Leave empty to skip WAF association."
+  type        = string
+  default     = ""
+}
