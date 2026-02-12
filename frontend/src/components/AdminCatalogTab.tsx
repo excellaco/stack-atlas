@@ -29,7 +29,7 @@ function CatalogActions({
           className="publish-catalog-btn"
           data-dirty={catalogDirty || undefined}
           onClick={onPublish}
-          disabled={!catalogDirty || saving}
+          disabled={(!catalogDirty && catalogSource === "api") || saving}
         >
           {saving ? "Publishing..." : "Publish to S3"}
         </button>
