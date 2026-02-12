@@ -172,7 +172,7 @@ export default function CommitLog() {
             <div className="diff-empty">No commits yet{subId ? ' for this subsystem' : ''}.</div>
           )}
           {relevantCommits.slice(0, 5).map((commit, index) => renderCommitEntry(commit, index, relevantCommits))}
-          {relevantCommits.length > 5 && (
+          {relevantCommits.length > 0 && (
             <button type="button" className="ghost commit-view-all" onClick={() => setShowFullHistory(true)}>
               View all history ({relevantCommits.length} commits)
             </button>

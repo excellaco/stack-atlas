@@ -58,10 +58,17 @@
   text-align: center;
 }
 
-.commit-pane-body {
+.commit-pane-diff {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.commit-pane > form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   padding-top: 0.5rem;
 }
 

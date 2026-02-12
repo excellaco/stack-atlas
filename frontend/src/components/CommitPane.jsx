@@ -90,7 +90,7 @@ export default function CommitPane() {
         <span className="commit-pane-toggle">{isOpen ? '−' : '+'}</span>
       </div>
       {isOpen && (
-        <div className="commit-pane-body">
+        <div className="commit-pane-diff">
           {hasChanges && (
             <div className="commit-pane-changes">
               {pendingChanges.itemsAdded.map((id) => (
@@ -113,35 +113,35 @@ export default function CommitPane() {
           {!hasChanges && !hasDraft && !dirty && (
             <div className="commit-pane-no-changes">No changes to commit</div>
           )}
-          <form onSubmit={handleCommit}>
-            <input
-              type="text"
-              className="commit-pane-input"
-              placeholder="Describe what changed..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            {error && <div className="auth-error">{error}</div>}
-            <div className="commit-pane-actions">
-              <button
-                type="submit"
-                className="primary"
-                disabled={loading || !message.trim() || !hasDraft}
-              >
-                {loading ? 'Committing...' : 'Commit'}
-              </button>
-              <button
-                type="button"
-                className="ghost danger"
-                disabled={!hasDraft}
-                onClick={handleDiscard}
-              >
-                Discard
-              </button>
-            </div>
-          </form>
         </div>
       )}
+      <form onSubmit={handleCommit}>
+        <input
+          type="text"
+          className="commit-pane-input"
+          placeholder="Describe what changed..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        {error && <div className="auth-error">{error}</div>}
+        <div className="commit-pane-actions">
+          <button
+            type="submit"
+            className="primary"
+            disabled={loading || !message.trim() || !hasDraft}
+          >
+            {loading ? 'Committing...' : 'Commit'}
+          </button>
+          <button
+            type="button"
+            className="ghost danger"
+            disabled={!hasDraft}
+            onClick={handleDiscard}
+          >
+            Discard
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

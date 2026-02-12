@@ -48,10 +48,6 @@ function App() {
   const setDensity = useStore((s) => s.setDensity)
   const collapsedCategories = useStore((s) => s.collapsedCategories)
   const toggleCategoryCollapse = useStore((s) => s.toggleCategoryCollapse)
-  const exportFormat = useStore((s) => s.exportFormat)
-  const setExportFormat = useStore((s) => s.setExportFormat)
-  const isExportOpen = useStore((s) => s.isExportOpen)
-  const setIsExportOpen = useStore((s) => s.setIsExportOpen)
   const showAdmin = useStore((s) => s.showAdmin)
   const sessionExpired = useStore((s) => s.sessionExpired)
   const setSessionExpired = useStore((s) => s.setSessionExpired)
@@ -215,14 +211,10 @@ function App() {
     [selectedItems, itemsById, catalogCategories]
   )
 
-  const exportText = useMemo(
-    () => formatExport(exportData, exportFormat),
-    [exportData, exportFormat]
-  )
-
-  const handleCopy = async () => {
+  const handleCopyAs = async (format) => {
     try {
-      await navigator.clipboard.writeText(exportText)
+      const text = formatExport(exportData, format)
+      await navigator.clipboard.writeText(text)
     } catch (error) {
       console.error('Failed to copy output', error)
     }
@@ -303,7 +295,7 @@ function App() {
           {user && <ProjectSelector />}
           <div className="panel-header">
             <h3>Filters</h3>
-            <button type="button" className="ghost" onClick={() => { resetFilters(); setSelectedProviders([]) }}>
+            <button type="button" className="ghost" onClick={resetFilters}>
               Clear
             </button>
           </div>
@@ -584,11 +576,20 @@ function App() {
             </div>
           )}
 
+          {activeProject && token && <CommitPane />}
+
+          {activeProject && <CommitLog />}
+
           <div className="panel-header">
             <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}</h3>
-            <button type="button" className="ghost" onClick={clearSelection}>
-              Clear all
-            </button>
+            <div className="copy-actions">
+              <button type="button" className="ghost" onClick={() => handleCopyAs('markdown')}>
+                Copy Markdown
+              </button>
+              <button type="button" className="ghost" onClick={() => handleCopyAs('json')}>
+                Copy JSON
+              </button>
+            </div>
           </div>
 
           {selectedItems.length ? (
@@ -625,43 +626,6 @@ function App() {
               Select items to build a standardized stack output.
             </div>
           )}
-
-          {activeProject && token && <CommitPane />}
-
-          <div className="export-panel">
-            <div className="export-header">
-              <div className="export-trigger" onClick={() => setIsExportOpen((prev) => !prev)}>
-                <h4>Export</h4>
-                <span className="export-toggle">{isExportOpen ? '−' : '+'}</span>
-              </div>
-              <div className="export-actions">
-                <button
-                  type="button"
-                  className="chip"
-                  data-active={exportFormat === 'markdown' || undefined}
-                  onClick={() => setExportFormat('markdown')}
-                >
-                  Markdown
-                </button>
-                <button
-                  type="button"
-                  className="chip"
-                  data-active={exportFormat === 'json' || undefined}
-                  onClick={() => setExportFormat('json')}
-                >
-                  JSON
-                </button>
-                <button type="button" className="ghost" onClick={handleCopy}>
-                  Copy
-                </button>
-              </div>
-            </div>
-            {isExportOpen && (
-              <pre className="export-body">{exportText}</pre>
-            )}
-          </div>
-
-          {activeProject && <CommitLog />}
         </aside>
       </main>
 
