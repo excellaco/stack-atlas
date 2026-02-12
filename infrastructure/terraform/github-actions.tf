@@ -1,7 +1,7 @@
 variable "github_repository" {
   description = "GitHub repository allowed to assume the deploy role (owner/repo)"
   type        = string
-  default     = "tsonu/stack-atlas"
+  default     = "excellaco/stack-atlas"
 }
 
 variable "github_branch" {
