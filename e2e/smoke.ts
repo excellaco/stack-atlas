@@ -94,7 +94,7 @@ const checks: Check[] = [
     fn: async () => {
       const res = await fetch(`${API_URL}/projects`, {
         method: "OPTIONS",
-        headers: { Origin: SITE_URL },
+        headers: { Origin: SITE_URL, "Access-Control-Request-Method": "GET" },
       });
       const acao = res.headers.get("access-control-allow-origin");
       if (!acao) throw new Error("Missing Access-Control-Allow-Origin header");

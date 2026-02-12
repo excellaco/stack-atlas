@@ -99,15 +99,7 @@ data "aws_iam_policy_document" "github_deploy" {
       "s3:DeleteBucketPolicy",
       "s3:DeleteObject",
       "s3:DeleteObjectTagging",
-      "s3:GetBucketLocation",
-      "s3:GetBucketOwnershipControls",
-      "s3:GetBucketPolicy",
-      "s3:GetBucketPublicAccessBlock",
-      "s3:GetBucketTagging",
-      "s3:GetBucketVersioning",
-      "s3:GetEncryptionConfiguration",
-      "s3:GetObject",
-      "s3:GetObjectTagging",
+      "s3:Get*",
       "s3:ListBucket",
       "s3:ListBucketMultipartUploads",
       "s3:ListBucketVersions",
@@ -131,9 +123,12 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
-    sid       = "Route53Lookup"
-    effect    = "Allow"
-    actions   = ["route53:ListHostedZonesByName"]
+    sid    = "Route53Lookup"
+    effect = "Allow"
+    actions = [
+      "route53:ListHostedZones",
+      "route53:ListHostedZonesByName"
+    ]
     resources = ["*"]
   }
 
@@ -143,7 +138,8 @@ data "aws_iam_policy_document" "github_deploy" {
     actions = [
       "route53:ChangeResourceRecordSets",
       "route53:GetHostedZone",
-      "route53:ListResourceRecordSets"
+      "route53:ListResourceRecordSets",
+      "route53:ListTagsForResource"
     ]
     resources = [
       "arn:${data.aws_partition.current.partition}:route53:::hostedzone/${data.aws_route53_zone.primary.zone_id}"
@@ -307,10 +303,9 @@ data "aws_iam_policy_document" "github_deploy" {
       "lambda:AddPermission",
       "lambda:CreateFunction",
       "lambda:DeleteFunction",
-      "lambda:GetFunction",
-      "lambda:GetFunctionConfiguration",
-      "lambda:GetPolicy",
+      "lambda:Get*",
       "lambda:ListTags",
+      "lambda:ListVersionsByFunction",
       "lambda:PublishVersion",
       "lambda:RemovePermission",
       "lambda:TagResource",
@@ -355,6 +350,7 @@ data "aws_iam_policy_document" "github_deploy" {
     sid    = "CognitoList"
     effect = "Allow"
     actions = [
+      "cognito-idp:DescribeUserPoolDomain",
       "cognito-idp:ListUserPoolClients",
       "cognito-idp:ListUserPools"
     ]
@@ -368,6 +364,8 @@ data "aws_iam_policy_document" "github_deploy" {
       "cognito-idp:AdminAddUserToGroup",
       "cognito-idp:AdminCreateUser",
       "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminListGroupsForUser",
       "cognito-idp:AdminRemoveUserFromGroup",
       "cognito-idp:AdminSetUserPassword",
       "cognito-idp:AdminUpdateUserAttributes",
@@ -380,8 +378,8 @@ data "aws_iam_policy_document" "github_deploy" {
       "cognito-idp:DeleteUserPoolDomain",
       "cognito-idp:DescribeUserPool",
       "cognito-idp:DescribeUserPoolClient",
-      "cognito-idp:DescribeUserPoolDomain",
       "cognito-idp:GetGroup",
+      "cognito-idp:GetUserPoolMfaConfig",
       "cognito-idp:TagResource",
       "cognito-idp:UntagResource",
       "cognito-idp:UpdateGroup",
