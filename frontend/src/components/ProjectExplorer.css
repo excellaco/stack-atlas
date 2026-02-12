@@ -1,0 +1,131 @@
+.explorer {
+  padding: 0 0.75rem;
+}
+
+.explorer-header {
+  margin-bottom: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.explorer-header h3 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  color: var(--muted);
+}
+
+.explorer-empty {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 1rem 0.25rem;
+}
+
+.explorer-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.explorer-node {
+  border-radius: 4px;
+}
+
+.explorer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  border-radius: 4px;
+}
+
+.explorer-row.active {
+  background: rgb(15 118 110 / 8%);
+}
+
+.explorer-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.3rem 0.15rem;
+  width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.explorer-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--ink);
+  font-family: inherit;
+  padding: 0.3rem 0.35rem;
+  border-radius: 4px;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  transition: background 0.1s ease;
+}
+
+.explorer-name:hover {
+  background: rgb(15 23 42 / 4%);
+}
+
+.explorer-row.active .explorer-name {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.explorer-icon {
+  flex-shrink: 0;
+  stroke: var(--muted);
+}
+
+.explorer-row.active .explorer-icon {
+  stroke: var(--accent);
+}
+
+.explorer-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: rgb(15 118 110 / 10%);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.editor-badge svg {
+  stroke: var(--accent);
+}
+
+.explorer-children {
+  padding-left: 1rem;
+  margin-left: 0.6rem;
+  border-left: 1px solid rgb(15 23 42 / 8%);
+}
+
+.explorer-sub {
+  padding-left: 0.15rem;
+}
+
+.explorer-loading {
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding: 0.25rem 0.35rem 0.25rem 0.75rem;
+}

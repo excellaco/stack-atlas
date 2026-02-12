@@ -1,0 +1,28 @@
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.35rem 0;
+  font-size: 0.8rem;
+}
+
+.auth-user {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.auth-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.auth-form input {
+  border: 1px solid rgb(15 23 42 / 15%);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  width: 160px;
+}

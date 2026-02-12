@@ -1,22 +1,57 @@
 {
   "name": "stack-atlas",
+  "version": "1.0.0",
+  "description": "Standardize how teams describe their technology stacks",
+  "license": "MIT",
+  "author": "Excella",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/excellaco/stack-atlas.git"
+  },
+  "homepage": "https://github.com/excellaco/stack-atlas",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "engines": {
-    "node": "24.12.0"
-  },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "lint": "eslint . && stylelint \"frontend/src/**/*.css\"",
+    "lint:fix": "eslint . --fix && stylelint \"frontend/src/**/*.css\" --fix",
+    "lint:css": "stylelint \"frontend/src/**/*.css\"",
+    "lint:css:fix": "stylelint \"frontend/src/**/*.css\" --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p frontend/tsconfig.json --noEmit && tsc -p backend/tsconfig.json --noEmit",
+    "typecheck:frontend": "tsc -p frontend/tsconfig.json --noEmit",
+    "typecheck:backend": "tsc -p backend/tsconfig.json --noEmit",
+    "lint:tf": "tflint --recursive --chdir infrastructure/terraform",
+    "fmt:tf": "terraform fmt -recursive infrastructure/terraform",
+    "fmt:tf:check": "terraform fmt -check -recursive infrastructure/terraform",
+    "security": "trivy config --severity HIGH,CRITICAL infrastructure/terraform && trivy fs --severity HIGH,CRITICAL --scanners secret .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npx tsx e2e/smoke.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.0"
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.2.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "amazon-cognito-identity-js": "^6.3.16",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.0",
+    "eslint-plugin-sonarjs": "^3.0.7",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
+    "stylelint": "^17.2.0",
+    "stylelint-config-standard": "^40.0.0",
+    "ts-api-utils": "^2.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0",
+    "vitest": "^4.0.18"
   }
 }

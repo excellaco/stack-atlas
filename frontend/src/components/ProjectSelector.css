@@ -1,0 +1,25 @@
+.project-selector-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(15 23 42 / 8%);
+}
+
+.project-selector-block .project-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.project-selector-block select {
+  border: 1px solid rgb(15 23 42 / 15%);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  background: white;
+  width: 100%;
+}

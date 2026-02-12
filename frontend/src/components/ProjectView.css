@@ -1,0 +1,168 @@
+.project-view {
+  padding: 2rem 2.5rem;
+  flex: 1;
+  width: 100%;
+}
+
+.project-view-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.edit-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.edit-mode-btn:hover {
+  opacity: 0.9;
+}
+
+.edit-mode-btn svg {
+  stroke: #fff;
+}
+
+.project-view-access-denied {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.project-view-access-denied h2 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--ink);
+}
+
+.project-view-access-denied p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.project-view-loading,
+.project-view-error {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.project-view-error {
+  color: #b91c1c;
+}
+
+.project-view-back {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 0.75rem;
+}
+
+.project-view-back:hover {
+  text-decoration: underline;
+}
+
+.project-view-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgb(15 23 42 / 10%);
+}
+
+.project-view-header h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem;
+}
+
+.project-view-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.project-view-content h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.5rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.project-view-content h2 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.15rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--ink);
+}
+
+.project-view-content ul,
+.project-view-content ol {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.project-view-content li {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.project-view-content p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.project-view-subsystems {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(15 23 42 / 10%);
+}
+
+.project-view-subsystems h2 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+}
+
+a.project-view-subsystem {
+  display: block;
+  background: rgb(15 23 42 / 3%);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+a.project-view-subsystem:hover {
+  background: rgb(15 23 42 / 6%);
+}
+
+.project-view-subsystem h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.25rem;
+  color: var(--ink);
+}
+
+.project-view-subsystem p {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}

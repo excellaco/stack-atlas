@@ -1,0 +1,54 @@
+import { useStore } from "../store";
+import "./ProjectSelector.css";
+
+export default function ProjectSelector(): React.JSX.Element {
+  const projects = useStore((s) => s.projects);
+  const activeProject = useStore((s) => s.activeProject);
+  const activeSubsystem = useStore((s) => s.activeSubsystem);
+  const subsystems = useStore((s) => s.subsystems);
+  const selectProject = useStore((s) => s.selectProject);
+  const selectSubsystem = useStore((s) => s.selectSubsystem);
+
+  return (
+    <div className="project-selector-block">
+      <label className="project-label" htmlFor="project-select">
+        Project
+      </label>
+      <select
+        id="project-select"
+        value={activeProject?.id || ""}
+        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+          selectProject(e.target.value || null)
+        }
+      >
+        <option value="">Local (no project)</option>
+        {projects.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      {activeProject && (
+        <>
+          <label className="project-label" htmlFor="subsystem-select">
+            Subsystem
+          </label>
+          <select
+            id="subsystem-select"
+            value={activeSubsystem?.id || ""}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              selectSubsystem(e.target.value || null)
+            }
+          >
+            <option value="">Base project</option>
+            {subsystems.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+    </div>
+  );
+}
