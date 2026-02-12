@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: hashicorp/setup-terraform@v3
+      - uses: terraform-linters/setup-tflint@v4
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix frontend
+          npm ci --prefix backend
+      - name: Initialize TFLint rules
+        run: tflint --chdir infrastructure/terraform --init
+      - name: Lint
+        run: |
+          npm run format:check
+          npm run lint
+          npm run fmt:tf:check
+          npm run lint:tf
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: us-east-1
+      - name: Deploy
+        run: bash scripts/deploy.sh

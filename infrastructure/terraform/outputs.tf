@@ -27,3 +27,8 @@ output "seed_user_passwords" {
   } }
   sensitive = true
 }
+
+output "github_deploy_role_arn" {
+  description = "IAM role ARN for GitHub Actions OIDC deployments"
+  value       = aws_iam_role.github_deploy.arn
+}
