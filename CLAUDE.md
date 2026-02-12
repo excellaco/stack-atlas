@@ -1,5 +1,18 @@
 # CLAUDE.md
 
+## CRITICAL: No Destructive Git Commands
+
+**NEVER run destructive git commands** including but not limited to:
+- `git reset` (soft, mixed, or hard)
+- `git checkout .` or `git checkout -- <file>` (discards uncommitted work)
+- `git restore .` (discards uncommitted work)
+- `git clean -f` (deletes untracked files)
+- `git push --force` / `git push --force-with-lease`
+- `git branch -D` (force-deletes branches)
+- `git stash drop` / `git stash clear`
+
+If you need to undo something, ask the user first. There is always parallel work in progress that these commands would destroy.
+
 ## Project Overview
 
 Stack Atlas is a multi-tenant web application for standardizing how teams describe their technology stacks. Users filter a curated catalog, select technologies, and export standardized stack definitions. Projects support subsystems (additions/exclusions inheritance model), draft/commit workflows with per-user locking, and full commit history with snapshot diffs.
@@ -239,14 +252,19 @@ E2E credentials are stored in AWS Secrets Manager (populated by Terraform in `e2
 
 ESLint notable rules: complexity warn at 10, max-lines warn at 300, max-lines-per-function warn at 50, max-depth warn at 4. `data/stackData.ts` is excluded from linting (auto-generated, ~4000 lines).
 
-## CI Pipeline
+## CI/CD Pipeline
 
-GitHub Actions workflow (`.github/workflows/deploy.yml`) on push to `main`:
+Single GitHub Actions workflow (`.github/workflows/ci.yml`) with two jobs:
 
-1. **Quality gates** — Prettier, ESLint, Stylelint, Terraform fmt, TFLint
+**`ci` job** — runs on push to **all branches** + PRs to main:
+
+1. **Lint** — Prettier, ESLint, Stylelint, Terraform fmt, TFLint
 2. **Security scans** — Trivy IaC config scan + filesystem secret detection (HIGH/CRITICAL, fail pipeline)
 3. **Type checking** — `tsc --noEmit` for frontend and backend
 4. **Unit tests** — Vitest (63 tests)
+
+**`deploy` job** — runs on push to **main only**, `needs: ci` (won't run if CI fails):
+
 5. **Deploy** — OIDC credentials → `scripts/deploy.sh`
 6. **E2E smoke test** — Fetch credentials from Secrets Manager → run against live deployment
 
