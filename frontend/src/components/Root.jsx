@@ -1,14 +1,14 @@
-import { Outlet } from 'react-router-dom'
-import { useStore } from '../store'
-import AuthBar from './AuthBar'
-import SplashScreen from './SplashScreen'
-import ProjectExplorer from './ProjectExplorer'
-import ConfirmModal from './ConfirmModal'
-import './Root.css'
+import { Outlet } from "react-router-dom";
+import { useStore } from "../store";
+import AuthBar from "./AuthBar";
+import SplashScreen from "./SplashScreen";
+import ProjectExplorer from "./ProjectExplorer";
+import ConfirmModal from "./ConfirmModal";
+import "./Root.css";
 
 export default function Root() {
-  const user = useStore((s) => s.user)
-  const authLoading = useStore((s) => s.authLoading)
+  const user = useStore((s) => s.user);
+  const authLoading = useStore((s) => s.authLoading);
 
   if (authLoading) {
     return (
@@ -16,7 +16,7 @@ export default function Root() {
         <img src="/stack-atlas.png" alt="Stack Atlas" width="32" />
         <span>Loading...</span>
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -25,7 +25,7 @@ export default function Root() {
         <SplashScreen />
         <ConfirmModal />
       </>
-    )
+    );
   }
 
   return (
@@ -52,10 +52,14 @@ export default function Root() {
       <footer className="app-footer">
         <span>Copyright &copy; {new Date().getFullYear()}</span>
         <a href="https://www.excella.com" target="_blank" rel="noreferrer">
-          <img src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg" alt="Excella" height="14" />
+          <img
+            src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg"
+            alt="Excella"
+            height="14"
+          />
         </a>
       </footer>
       <ConfirmModal />
     </div>
-  )
+  );
 }

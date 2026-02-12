@@ -4,32 +4,42 @@ import { ensureUserInRegistry } from "../storage.js";
 export const jsonResponse = (statusCode, body, headers = {}) => ({
   statusCode,
   headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", ...headers },
-  body: JSON.stringify(body)
+  body: JSON.stringify(body),
 });
 
 export const emptyResponse = (statusCode, headers = {}) => ({
   statusCode,
-  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", ...headers }
+  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", ...headers },
 });
 
 export const getCorsHeaders = (origin) => {
   const allowList = (process.env.ALLOWED_ORIGINS ?? "*").split(",").map((s) => s.trim());
-  const allowOrigin = allowList.includes("*") ? "*" : allowList.includes(origin ?? "") ? origin : allowList[0] || "*";
+  const allowOrigin = allowList.includes("*")
+    ? "*"
+    : allowList.includes(origin ?? "")
+      ? origin
+      : allowList[0] || "*";
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": "authorization,content-type",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
   };
 };
 
 export const parseBody = (event) => {
   if (!event.body) throw new Error("Missing request body");
-  const raw = event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
+  const raw = event.isBase64Encoded
+    ? Buffer.from(event.body, "base64").toString("utf8")
+    : event.body;
   return JSON.parse(raw);
 };
 
 export const slugify = (name) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64);
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
 
 export const authenticate = async (auth) => {
   const user = await verifyAuth(auth);

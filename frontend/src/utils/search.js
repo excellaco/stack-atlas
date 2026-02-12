@@ -1,5 +1,5 @@
 export const toggleInList = (list, value) =>
-  list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
+  list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
 export const buildSearchText = (item, categoryById) => {
   const parts = [
@@ -8,7 +8,7 @@ export const buildSearchText = (item, categoryById) => {
     item.description,
     ...(item.synonyms || []),
     ...(item.tags || []),
-    categoryById.get(item.category)?.name || ''
-  ]
-  return parts.join(' ').toLowerCase()
-}
+    categoryById.get(item.category)?.name || "",
+  ];
+  return parts.join(" ").toLowerCase();
+};

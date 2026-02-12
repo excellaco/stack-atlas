@@ -21,7 +21,7 @@ export const verifyAuth = async (authorization) => {
     return {
       sub: payload.sub,
       email: payload.email,
-      groups: payload["cognito:groups"] || []
+      groups: payload["cognito:groups"] || [],
     };
   } catch {
     throw new Error("Invalid token");

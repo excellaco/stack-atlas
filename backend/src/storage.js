@@ -3,7 +3,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   DeleteObjectCommand,
-  ListObjectsV2Command
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({});
@@ -20,12 +20,14 @@ const readJson = async (key) => {
 };
 
 const writeJson = async (key, data) => {
-  await s3.send(new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-    Body: JSON.stringify(data, null, 2),
-    ContentType: "application/json"
-  }));
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: JSON.stringify(data, null, 2),
+      ContentType: "application/json",
+    })
+  );
 };
 
 const deleteKey = async (key) => {
@@ -187,7 +189,7 @@ export const ensureUserInRegistry = async (user) => {
   registry.users[user.sub] = {
     email: user.email || "",
     name: user.name || "",
-    firstSeen: new Date().toISOString()
+    firstSeen: new Date().toISOString(),
   };
   await writeJson("config/users.json", registry);
 };

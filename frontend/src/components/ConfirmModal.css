@@ -19,7 +19,7 @@
 }
 
 .confirm-modal h3 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 1.1rem;
   margin: 0 0 0.5rem;
   color: var(--ink);
@@ -46,7 +46,9 @@
   cursor: pointer;
   font-family: inherit;
   font-weight: 500;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .confirm-btn.cancel {

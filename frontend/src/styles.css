@@ -56,7 +56,7 @@
 
 .panel-header h3 {
   margin: 0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 0.95rem;
 }
 
@@ -195,7 +195,7 @@
 }
 
 .diff-added::before {
-  content: '+ ';
+  content: "+ ";
   font-weight: 600;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .diff-removed::before {
-  content: '- ';
+  content: "- ";
   font-weight: 600;
 }
 

@@ -1,10 +1,19 @@
 import { randomUUID } from "crypto";
 import { isAdmin, isEditor } from "../roles.js";
 import {
-  getProjectIndex, putProjectIndex,
-  putStack, listSubsystems, putSubsystem, deleteSubsystem,
-  getDraft, getDraftForProject, putDraft, deleteDraft, isLockExpired,
-  getCommitLog, appendCommit
+  getProjectIndex,
+  putProjectIndex,
+  putStack,
+  listSubsystems,
+  putSubsystem,
+  deleteSubsystem,
+  getDraft,
+  getDraftForProject,
+  putDraft,
+  deleteDraft,
+  isLockExpired,
+  getCommitLog,
+  appendCommit,
 } from "../storage.js";
 import { jsonResponse, parseBody, authenticate } from "./utils.js";
 
@@ -17,10 +26,23 @@ export const handleDrafts = async (method, path, event, cors) => {
   if (method === "GET" && draftMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(draftMatch[1]);
-    if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+    if (!(await isEditor(user, projectId)))
+      return jsonResponse(403, { message: "Editor access required" }, cors);
     const existingDraft = await getDraftForProject(projectId);
-    if (existingDraft && existingDraft.lockedBy !== user.sub && !isLockExpired(existingDraft.lockedAt)) {
-      return jsonResponse(423, { message: "Project is locked by another user", lockedBy: existingDraft.lockedBy, lockedAt: existingDraft.lockedAt }, cors);
+    if (
+      existingDraft &&
+      existingDraft.lockedBy !== user.sub &&
+      !isLockExpired(existingDraft.lockedAt)
+    ) {
+      return jsonResponse(
+        423,
+        {
+          message: "Project is locked by another user",
+          lockedBy: existingDraft.lockedBy,
+          lockedAt: existingDraft.lockedAt,
+        },
+        cors
+      );
     }
     const draft = await getDraft(user.sub, projectId);
     return jsonResponse(200, { data: draft }, cors);
@@ -29,10 +51,23 @@ export const handleDrafts = async (method, path, event, cors) => {
   if (method === "PUT" && draftMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(draftMatch[1]);
-    if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+    if (!(await isEditor(user, projectId)))
+      return jsonResponse(403, { message: "Editor access required" }, cors);
     const existingDraft = await getDraftForProject(projectId);
-    if (existingDraft && existingDraft.lockedBy !== user.sub && !isLockExpired(existingDraft.lockedAt)) {
-      return jsonResponse(423, { message: "Project is locked by another user", lockedBy: existingDraft.lockedBy, lockedAt: existingDraft.lockedAt }, cors);
+    if (
+      existingDraft &&
+      existingDraft.lockedBy !== user.sub &&
+      !isLockExpired(existingDraft.lockedAt)
+    ) {
+      return jsonResponse(
+        423,
+        {
+          message: "Project is locked by another user",
+          lockedBy: existingDraft.lockedBy,
+          lockedAt: existingDraft.lockedAt,
+        },
+        cors
+      );
     }
     const body = parseBody(event);
     const now = new Date().toISOString();
@@ -42,7 +77,7 @@ export const handleDrafts = async (method, path, event, cors) => {
       subsystems: body.subsystems || {},
       lockedBy: user.sub,
       lockedAt: myDraft?.lockedAt || now,
-      updatedAt: now
+      updatedAt: now,
     };
     await putDraft(user.sub, projectId, draft);
     return jsonResponse(200, { data: draft }, cors);
@@ -51,10 +86,11 @@ export const handleDrafts = async (method, path, event, cors) => {
   if (method === "DELETE" && draftMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(draftMatch[1]);
-    if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+    if (!(await isEditor(user, projectId)))
+      return jsonResponse(403, { message: "Editor access required" }, cors);
     const draft = await getDraft(user.sub, projectId);
     if (!draft) return jsonResponse(404, { message: "No draft found" }, cors);
-    if (draft.lockedBy !== user.sub && !await isAdmin(user)) {
+    if (draft.lockedBy !== user.sub && !(await isAdmin(user))) {
       return jsonResponse(403, { message: "Only the draft owner or admin can discard" }, cors);
     }
     await deleteDraft(user.sub, projectId);
@@ -65,16 +101,23 @@ export const handleDrafts = async (method, path, event, cors) => {
   if (method === "POST" && commitMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(commitMatch[1]);
-    if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+    if (!(await isEditor(user, projectId)))
+      return jsonResponse(403, { message: "Editor access required" }, cors);
     const body = parseBody(event);
-    if (!body.message?.trim()) return jsonResponse(400, { message: "Commit message is required" }, cors);
+    if (!body.message?.trim())
+      return jsonResponse(400, { message: "Commit message is required" }, cors);
 
     const draft = await getDraft(user.sub, projectId);
     if (!draft) return jsonResponse(400, { message: "No draft to commit" }, cors);
 
     const now = new Date().toISOString();
 
-    await putStack(projectId, { items: draft.stack?.items || [], providers: draft.stack?.providers || [], updatedAt: now, updatedBy: user.sub });
+    await putStack(projectId, {
+      items: draft.stack?.items || [],
+      providers: draft.stack?.providers || [],
+      updatedAt: now,
+      updatedBy: user.sub,
+    });
 
     const existingSubs = await listSubsystems(projectId);
     const existingSubIds = new Set(existingSubs.map((s) => s.id));
@@ -91,7 +134,7 @@ export const handleDrafts = async (method, path, event, cors) => {
         exclusions: subData.exclusions || [],
         createdBy: existing?.createdBy || user.sub,
         createdAt: existing?.createdAt || now,
-        updatedAt: now
+        updatedAt: now,
       };
       await putSubsystem(projectId, subId, sub);
     }
@@ -112,13 +155,13 @@ export const handleDrafts = async (method, path, event, cors) => {
     const snapshot = {
       stack: draft.stack?.items || [],
       providers: draft.stack?.providers || [],
-      subsystems: {}
+      subsystems: {},
     };
     for (const [subId, subData] of Object.entries(draft.subsystems || {})) {
       snapshot.subsystems[subId] = {
         name: subData.name || subId,
         additions: subData.additions || [],
-        exclusions: subData.exclusions || []
+        exclusions: subData.exclusions || [],
       };
     }
 
@@ -128,7 +171,7 @@ export const handleDrafts = async (method, path, event, cors) => {
       author: user.email,
       authorSub: user.sub,
       timestamp: now,
-      snapshot
+      snapshot,
     };
 
     await appendCommit(projectId, commit);
@@ -138,7 +181,7 @@ export const handleDrafts = async (method, path, event, cors) => {
   }
 
   if (method === "GET" && commitsMatch) {
-    const user = await authenticate(auth);
+    await authenticate(auth);
     const projectId = decodeURIComponent(commitsMatch[1]);
     const log = await getCommitLog(projectId);
     return jsonResponse(200, { data: log.commits.slice().reverse() }, cors);

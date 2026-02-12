@@ -1,19 +1,19 @@
-import { useStore } from '../store'
-import './ConfirmModal.css'
+import { useStore } from "../store";
+import "./ConfirmModal.css";
 
 export default function ConfirmModal() {
-  const dialog = useStore((s) => s.confirmDialog)
-  const resolveConfirm = useStore((s) => s.resolveConfirm)
+  const dialog = useStore((s) => s.confirmDialog);
+  const resolveConfirm = useStore((s) => s.resolveConfirm);
 
-  if (!dialog) return null
+  if (!dialog) return null;
 
   const {
-    title = 'Confirm',
+    title = "Confirm",
     message,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Cancel',
-    variant = 'default'
-  } = dialog
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    variant = "default",
+  } = dialog;
 
   return (
     <div className="confirm-overlay" onClick={() => resolveConfirm(false)}>
@@ -38,5 +38,5 @@ export default function ConfirmModal() {
         </div>
       </div>
     </div>
-  )
+  );
 }

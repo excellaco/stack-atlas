@@ -1,36 +1,36 @@
-import { useState } from 'react'
-import { useStore } from '../store'
-import { selectIsAdmin } from '../store/selectors'
-import './AuthBar.css'
+import { useState } from "react";
+import { useStore } from "../store";
+import { selectIsAdmin } from "../store/selectors";
+import "./AuthBar.css";
 
 export default function AuthBar() {
-  const user = useStore((s) => s.user)
-  const signIn = useStore((s) => s.signIn)
-  const signOut = useStore((s) => s.signOut)
-  const isAdmin = useStore((s) => selectIsAdmin(s))
-  const setShowAdmin = useStore((s) => s.setShowAdmin)
+  const user = useStore((s) => s.user);
+  const signIn = useStore((s) => s.signIn);
+  const signOut = useStore((s) => s.signOut);
+  const isAdmin = useStore((s) => selectIsAdmin(s));
+  const setShowAdmin = useStore((s) => s.setShowAdmin);
 
-  const [showForm, setShowForm] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [showForm, setShowForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
-      await signIn(email, password)
-      setShowForm(false)
-      setEmail('')
-      setPassword('')
+      await signIn(email, password);
+      setShowForm(false);
+      setEmail("");
+      setPassword("");
     } catch (err) {
-      setError(err.message || 'Sign in failed')
+      setError(err.message || "Sign in failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (user) {
     return (
@@ -45,7 +45,7 @@ export default function AuthBar() {
           Sign out
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -68,7 +68,7 @@ export default function AuthBar() {
             required
           />
           <button type="submit" className="primary" disabled={loading}>
-            {loading ? '...' : 'Sign in'}
+            {loading ? "..." : "Sign in"}
           </button>
           <button type="button" className="ghost" onClick={() => setShowForm(false)}>
             Cancel
@@ -81,5 +81,5 @@ export default function AuthBar() {
         </button>
       )}
     </div>
-  )
+  );
 }

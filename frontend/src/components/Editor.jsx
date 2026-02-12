@@ -1,234 +1,251 @@
-import { useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { buildTree, flattenTree } from '../utils/tree'
-import { buildExportData, formatExport } from '../utils/export'
-import { buildSearchText } from '../utils/search'
-import { toggleInList } from '../utils/search'
-import { getParentName } from '../utils/diff'
-import { useStore } from '../store'
+import { useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { buildTree, flattenTree } from "../utils/tree";
+import { buildExportData, formatExport } from "../utils/export";
+import { buildSearchText } from "../utils/search";
+import { toggleInList } from "../utils/search";
+import { getParentName } from "../utils/diff";
+import { useStore } from "../store";
 import {
-  selectCatalogItems, selectItemsById, selectCategoryById,
-  selectCategoryCounts, selectTagCounts, selectTagList,
-  selectDirty, selectPendingChanges
-} from '../store/selectors'
-import AuthBar from './AuthBar'
-import Breadcrumbs from './Breadcrumbs'
-import CommitPane from './CommitPane'
-import AdminPanel from './AdminPanel'
-import CommitLog from './CommitLog'
-import CategoryStyles from './CategoryStyles'
-import ConfirmModal from './ConfirmModal'
-import '../App.css'
+  selectCatalogItems,
+  selectItemsById,
+  selectCategoryById,
+  selectCategoryCounts,
+  selectTagCounts,
+  selectTagList,
+  selectDirty,
+  selectPendingChanges,
+} from "../store/selectors";
+import AuthBar from "./AuthBar";
+import Breadcrumbs from "./Breadcrumbs";
+import CommitPane from "./CommitPane";
+import AdminPanel from "./AdminPanel";
+import CommitLog from "./CommitLog";
+import CategoryStyles from "./CategoryStyles";
+import ConfirmModal from "./ConfirmModal";
+import "../App.css";
 
 const PROVIDERS = [
-  { id: 'aws', label: 'AWS' },
-  { id: 'azure', label: 'Azure' },
-  { id: 'gcp', label: 'GCP' }
-]
-const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
+  { id: "aws", label: "AWS" },
+  { id: "azure", label: "Azure" },
+  { id: "gcp", label: "GCP" },
+];
+const PROVIDER_IDS = PROVIDERS.map((p) => p.id);
 
 export default function Editor({ sandbox }) {
-  const params = useParams()
-  const navigate = useNavigate()
-  const urlProjectId = sandbox ? null : params.projectId
-  const urlSubsystemId = sandbox ? null : params.subsystemId
+  const params = useParams();
+  const navigate = useNavigate();
+  const urlProjectId = sandbox ? null : params.projectId;
+  const urlSubsystemId = sandbox ? null : params.subsystemId;
 
   // UI state
-  const query = useStore((s) => s.query)
-  const setQuery = useStore((s) => s.setQuery)
-  const selectedCategories = useStore((s) => s.selectedCategories)
-  const toggleCategory = useStore((s) => s.toggleCategory)
-  const selectedTypes = useStore((s) => s.selectedTypes)
-  const toggleType = useStore((s) => s.toggleType)
-  const selectedTags = useStore((s) => s.selectedTags)
-  const toggleTag = useStore((s) => s.toggleTag)
-  const isCategoriesOpen = useStore((s) => s.isCategoriesOpen)
-  const setIsCategoriesOpen = useStore((s) => s.setIsCategoriesOpen)
-  const isProvidersOpen = useStore((s) => s.isProvidersOpen)
-  const setIsProvidersOpen = useStore((s) => s.setIsProvidersOpen)
-  const isTypesOpen = useStore((s) => s.isTypesOpen)
-  const setIsTypesOpen = useStore((s) => s.setIsTypesOpen)
-  const isTagsOpen = useStore((s) => s.isTagsOpen)
-  const setIsTagsOpen = useStore((s) => s.setIsTagsOpen)
-  const viewMode = useStore((s) => s.viewMode)
-  const setViewMode = useStore((s) => s.setViewMode)
-  const density = useStore((s) => s.density)
-  const setDensity = useStore((s) => s.setDensity)
-  const collapsedCategories = useStore((s) => s.collapsedCategories)
-  const toggleCategoryCollapse = useStore((s) => s.toggleCategoryCollapse)
-  const showAdmin = useStore((s) => s.showAdmin)
-  const sessionExpired = useStore((s) => s.sessionExpired)
-  const setSessionExpired = useStore((s) => s.setSessionExpired)
-  const resetFilters = useStore((s) => s.resetFilters)
+  const query = useStore((s) => s.query);
+  const setQuery = useStore((s) => s.setQuery);
+  const selectedCategories = useStore((s) => s.selectedCategories);
+  const toggleCategory = useStore((s) => s.toggleCategory);
+  const selectedTypes = useStore((s) => s.selectedTypes);
+  const toggleType = useStore((s) => s.toggleType);
+  const selectedTags = useStore((s) => s.selectedTags);
+  const toggleTag = useStore((s) => s.toggleTag);
+  const isCategoriesOpen = useStore((s) => s.isCategoriesOpen);
+  const setIsCategoriesOpen = useStore((s) => s.setIsCategoriesOpen);
+  const isProvidersOpen = useStore((s) => s.isProvidersOpen);
+  const setIsProvidersOpen = useStore((s) => s.setIsProvidersOpen);
+  const isTypesOpen = useStore((s) => s.isTypesOpen);
+  const setIsTypesOpen = useStore((s) => s.setIsTypesOpen);
+  const isTagsOpen = useStore((s) => s.isTagsOpen);
+  const setIsTagsOpen = useStore((s) => s.setIsTagsOpen);
+  const viewMode = useStore((s) => s.viewMode);
+  const setViewMode = useStore((s) => s.setViewMode);
+  const density = useStore((s) => s.density);
+  const setDensity = useStore((s) => s.setDensity);
+  const collapsedCategories = useStore((s) => s.collapsedCategories);
+  const toggleCategoryCollapse = useStore((s) => s.toggleCategoryCollapse);
+  const showAdmin = useStore((s) => s.showAdmin);
+  const sessionExpired = useStore((s) => s.sessionExpired);
+  const setSessionExpired = useStore((s) => s.setSessionExpired);
+  const resetFilters = useStore((s) => s.resetFilters);
 
   // Auth
-  const user = useStore((s) => s.user)
-  const token = useStore((s) => s.token)
-  const authLoading = useStore((s) => s.authLoading)
-  const storeSignOut = useStore((s) => s.signOut)
-  const startTokenRefresh = useStore((s) => s.startTokenRefresh)
+  const token = useStore((s) => s.token);
+  const authLoading = useStore((s) => s.authLoading);
+  const storeSignOut = useStore((s) => s.signOut);
+  const startTokenRefresh = useStore((s) => s.startTokenRefresh);
 
   // Project/draft
-  const activeProject = useStore((s) => s.activeProject)
-  const activeSubsystem = useStore((s) => s.activeSubsystem)
-  const selectedItems = useStore((s) => s.selectedItems)
-  const selectedProviders = useStore((s) => s.selectedProviders)
-  const setSelectedProviders = useStore((s) => s.setSelectedProviders)
-  const savedStack = useStore((s) => s.savedStack)
-  const savedProviders = useStore((s) => s.savedProviders)
-  const hasDraft = useStore((s) => s.hasDraft)
-  const toggleItem = useStore((s) => s.toggleItem)
-  const addItems = useStore((s) => s.addItems)
-  const removeItem = useStore((s) => s.removeItem)
-  const selectProject = useStore((s) => s.selectProject)
-  const selectSubsystem = useStore((s) => s.selectSubsystem)
-  const projects = useStore((s) => s.projects)
-  const subsystems = useStore((s) => s.subsystems)
+  const activeProject = useStore((s) => s.activeProject);
+  const activeSubsystem = useStore((s) => s.activeSubsystem);
+  const selectedItems = useStore((s) => s.selectedItems);
+  const selectedProviders = useStore((s) => s.selectedProviders);
+  const setSelectedProviders = useStore((s) => s.setSelectedProviders);
+  const savedStack = useStore((s) => s.savedStack);
+  const savedProviders = useStore((s) => s.savedProviders);
+  const toggleItem = useStore((s) => s.toggleItem);
+  const addItems = useStore((s) => s.addItems);
+  const removeItem = useStore((s) => s.removeItem);
+  const selectProject = useStore((s) => s.selectProject);
+  const selectSubsystem = useStore((s) => s.selectSubsystem);
+  const projects = useStore((s) => s.projects);
+  const subsystems = useStore((s) => s.subsystems);
 
   // Catalog
-  const catalogCategories = useStore((s) => s.catalogCategories)
-  const catalogTypes = useStore((s) => s.catalogTypes)
-  const catalogRawItems = useStore((s) => s.catalogRawItems)
-  const catalogDescriptions = useStore((s) => s.catalogDescriptions)
+  const catalogCategories = useStore((s) => s.catalogCategories);
+  const catalogTypes = useStore((s) => s.catalogTypes);
+  const catalogRawItems = useStore((s) => s.catalogRawItems);
+  const catalogDescriptions = useStore((s) => s.catalogDescriptions);
 
   const catalogItems = useMemo(
     () => selectCatalogItems({ catalogRawItems, catalogDescriptions }),
     [catalogRawItems, catalogDescriptions]
-  )
-  const itemsById = useMemo(
-    () => selectItemsById(catalogItems),
-    [catalogItems]
-  )
+  );
+  const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems]);
   const categoryById = useMemo(
     () => selectCategoryById({ catalogCategories }),
     [catalogCategories]
-  )
-  const categoryCounts = useMemo(
-    () => selectCategoryCounts(catalogItems),
-    [catalogItems]
-  )
-  const tagCounts = useMemo(
-    () => selectTagCounts(catalogItems),
-    [catalogItems]
-  )
-  const tagList = useMemo(
-    () => selectTagList(tagCounts),
-    [tagCounts]
-  )
+  );
+  const categoryCounts = useMemo(() => selectCategoryCounts(catalogItems), [catalogItems]);
+  const tagCounts = useMemo(() => selectTagCounts(catalogItems), [catalogItems]);
+  const tagList = useMemo(() => selectTagList(tagCounts), [tagCounts]);
 
   // Token refresh
   useEffect(() => {
-    if (!token) return
-    return startTokenRefresh()
-  }, [token])
+    if (!token) return;
+    return startTokenRefresh();
+  }, [token, startTokenRefresh]);
 
   // Load project from URL params
   useEffect(() => {
-    if (!urlProjectId || !token || !projects.length) return
+    if (!urlProjectId || !token || !projects.length) return;
     if (activeProject?.id !== urlProjectId) {
-      selectProject(urlProjectId)
+      selectProject(urlProjectId);
     }
-  }, [urlProjectId, token, projects.length])
+  }, [urlProjectId, token, projects.length, activeProject?.id, selectProject]);
 
   // Load subsystem from URL params after project loads
   useEffect(() => {
-    if (!urlSubsystemId || !activeProject || activeProject.id !== urlProjectId) return
-    if (!subsystems.length) return
+    if (!urlSubsystemId || !activeProject || activeProject.id !== urlProjectId) return;
+    if (!subsystems.length) return;
     if (activeSubsystem?.id !== urlSubsystemId) {
-      selectSubsystem(urlSubsystemId)
+      selectSubsystem(urlSubsystemId);
     }
-  }, [urlSubsystemId, activeProject?.id, subsystems.length])
+  }, [
+    urlSubsystemId,
+    urlProjectId,
+    activeProject,
+    activeSubsystem?.id,
+    subsystems.length,
+    selectSubsystem,
+  ]);
 
   // Derived display state
-  const selectedSet = useMemo(
-    () => new Set(selectedItems),
-    [selectedItems]
-  )
+  const selectedSet = useMemo(() => new Set(selectedItems), [selectedItems]);
 
   const inheritedSet = useMemo(() => {
-    if (!activeSubsystem || !savedStack) return new Set()
-    const parentSet = new Set(savedStack)
-    const exclusionSet = new Set(activeSubsystem.exclusions || [])
-    const inherited = new Set()
+    if (!activeSubsystem || !savedStack) return new Set();
+    const parentSet = new Set(savedStack);
+    const exclusionSet = new Set(activeSubsystem.exclusions || []);
+    const inherited = new Set();
     for (const id of parentSet) {
-      if (!exclusionSet.has(id)) inherited.add(id)
+      if (!exclusionSet.has(id)) inherited.add(id);
     }
-    return inherited
-  }, [activeSubsystem, savedStack])
+    return inherited;
+  }, [activeSubsystem, savedStack]);
 
   const pendingChanges = useMemo(
-    () => selectPendingChanges({ activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders }),
-    [activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders]
-  )
-  const hasActualChanges = pendingChanges && (
-    pendingChanges.itemsAdded.length > 0 ||
-    pendingChanges.itemsRemoved.length > 0 ||
-    pendingChanges.providersAdded.length > 0 ||
-    pendingChanges.providersRemoved.length > 0
-  )
+    () =>
+      selectPendingChanges({
+        activeProject,
+        savedStack,
+        activeSubsystem,
+        subsystems,
+        selectedItems,
+        savedProviders,
+        selectedProviders,
+      }),
+    [
+      activeProject,
+      savedStack,
+      activeSubsystem,
+      subsystems,
+      selectedItems,
+      savedProviders,
+      selectedProviders,
+    ]
+  );
+  const hasActualChanges =
+    pendingChanges &&
+    (pendingChanges.itemsAdded.length > 0 ||
+      pendingChanges.itemsRemoved.length > 0 ||
+      pendingChanges.providersAdded.length > 0 ||
+      pendingChanges.providersRemoved.length > 0);
 
   const filteredItems = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = query.trim().toLowerCase();
 
     const baseMatches = catalogItems.filter((item) => {
       if (selectedCategories.length && !selectedCategories.includes(item.category)) {
-        return false
+        return false;
       }
       if (selectedProviders.length) {
-        const itemProviders = PROVIDER_IDS.filter((p) => item.tags?.includes(p))
+        const itemProviders = PROVIDER_IDS.filter((p) => item.tags?.includes(p));
         if (itemProviders.length && !itemProviders.some((p) => selectedProviders.includes(p))) {
-          return false
+          return false;
         }
       }
       if (selectedTypes.length && !selectedTypes.includes(item.type)) {
-        return false
+        return false;
       }
-      if (
-        selectedTags.length &&
-        !selectedTags.every((tag) => item.tags?.includes(tag))
-      ) {
-        return false
+      if (selectedTags.length && !selectedTags.every((tag) => item.tags?.includes(tag))) {
+        return false;
       }
-      if (!q) return true
-      return buildSearchText(item, categoryById).includes(q)
-    })
+      if (!q) return true;
+      return buildSearchText(item, categoryById).includes(q);
+    });
 
-    const ids = new Set(baseMatches.map((item) => item.id))
-    if (viewMode === 'hierarchy') {
+    const ids = new Set(baseMatches.map((item) => item.id));
+    if (viewMode === "hierarchy") {
       baseMatches.forEach((item) => {
-        ;(item.parents || []).forEach((parentId) => {
+        (item.parents || []).forEach((parentId) => {
           if (itemsById.has(parentId)) {
-            ids.add(parentId)
+            ids.add(parentId);
           }
-        })
-      })
+        });
+      });
     }
 
-    return catalogItems.filter((item) => ids.has(item.id))
-  }, [query, selectedCategories, selectedProviders, selectedTypes, selectedTags, viewMode, catalogItems, categoryById, itemsById])
+    return catalogItems.filter((item) => ids.has(item.id));
+  }, [
+    query,
+    selectedCategories,
+    selectedProviders,
+    selectedTypes,
+    selectedTags,
+    viewMode,
+    catalogItems,
+    categoryById,
+    itemsById,
+  ]);
 
   const sections = useMemo(() => {
     return catalogCategories
       .map((category) => {
-        const categoryItems = filteredItems.filter(
-          (item) => item.category === category.id
-        )
-        if (!categoryItems.length) return null
+        const categoryItems = filteredItems.filter((item) => item.category === category.id);
+        if (!categoryItems.length) return null;
 
         const displayItems =
-          viewMode === 'flat'
+          viewMode === "flat"
             ? [...categoryItems]
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((item) => ({ item, depth: 0 }))
-            : flattenTree(buildTree(categoryItems))
+            : flattenTree(buildTree(categoryItems));
 
         return {
           ...category,
-          items: displayItems
-        }
+          items: displayItems,
+        };
       })
-      .filter(Boolean)
-  }, [filteredItems, viewMode])
+      .filter(Boolean);
+  }, [filteredItems, viewMode, catalogCategories]);
 
   const selectedByCategory = useMemo(() => {
     return catalogCategories
@@ -237,42 +254,42 @@ export default function Editor({ sandbox }) {
           .map((id) => itemsById.get(id))
           .filter(Boolean)
           .filter((item) => item.category === category.id)
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-        if (!catItems.length) return null
+        if (!catItems.length) return null;
 
-        return { category, items: catItems }
+        return { category, items: catItems };
       })
-      .filter(Boolean)
-  }, [selectedItems, catalogCategories, itemsById])
+      .filter(Boolean);
+  }, [selectedItems, catalogCategories, itemsById]);
 
   const exportData = useMemo(
     () => buildExportData(selectedItems, itemsById, catalogCategories),
     [selectedItems, itemsById, catalogCategories]
-  )
+  );
 
   const handleCopyAs = async (format) => {
     try {
-      const text = formatExport(exportData, format)
-      await navigator.clipboard.writeText(text)
+      const text = formatExport(exportData, format);
+      await navigator.clipboard.writeText(text);
     } catch (error) {
-      console.error('Failed to copy output', error)
+      console.error("Failed to copy output", error);
     }
-  }
+  };
 
   const handleSwitchToView = async () => {
     if (selectDirty(useStore.getState())) {
       const ok = await useStore.getState().requestConfirm({
-        title: 'Leave Editor',
-        message: 'You have unsaved changes that haven\'t been auto-saved yet. Continue?',
-        confirmLabel: 'Leave Editor',
-        variant: 'warning'
-      })
-      if (!ok) return
+        title: "Leave Editor",
+        message: "You have unsaved changes that haven't been auto-saved yet. Continue?",
+        confirmLabel: "Leave Editor",
+        variant: "warning",
+      });
+      if (!ok) return;
     }
-    const subPath = activeSubsystem ? `/${activeSubsystem.id}` : ''
-    navigate(`/view/${activeProject.id}${subPath}`)
-  }
+    const subPath = activeSubsystem ? `/${activeSubsystem.id}` : "";
+    navigate(`/view/${activeProject.id}${subPath}`);
+  };
 
   return (
     <div className="app" data-density={density}>
@@ -286,13 +303,22 @@ export default function Editor({ sandbox }) {
           <Breadcrumbs
             project={activeProject}
             subsystem={activeSubsystem}
-            mode={sandbox ? 'sandbox' : 'edit'}
+            mode={sandbox ? "sandbox" : "edit"}
           />
         </div>
         <div className="top-bar-right">
           {!sandbox && activeProject && (
             <button type="button" className="view-mode-btn" onClick={handleSwitchToView}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
@@ -305,15 +331,15 @@ export default function Editor({ sandbox }) {
               <span>View</span>
               <button
                 type="button"
-                data-active={viewMode === 'hierarchy' || undefined}
-                onClick={() => setViewMode('hierarchy')}
+                data-active={viewMode === "hierarchy" || undefined}
+                onClick={() => setViewMode("hierarchy")}
               >
                 Hierarchy
               </button>
               <button
                 type="button"
-                data-active={viewMode === 'flat' || undefined}
-                onClick={() => setViewMode('flat')}
+                data-active={viewMode === "flat" || undefined}
+                onClick={() => setViewMode("flat")}
               >
                 Flat
               </button>
@@ -322,15 +348,15 @@ export default function Editor({ sandbox }) {
               <span>Density</span>
               <button
                 type="button"
-                data-active={density === 'compact' || undefined}
-                onClick={() => setDensity('compact')}
+                data-active={density === "compact" || undefined}
+                onClick={() => setDensity("compact")}
               >
                 Compact
               </button>
               <button
                 type="button"
-                data-active={density === 'comfortable' || undefined}
-                onClick={() => setDensity('comfortable')}
+                data-active={density === "comfortable" || undefined}
+                onClick={() => setDensity("comfortable")}
               >
                 Comfortable
               </button>
@@ -368,7 +394,7 @@ export default function Editor({ sandbox }) {
                 aria-expanded={isCategoriesOpen}
                 onClick={() => setIsCategoriesOpen((prev) => !prev)}
               >
-                {isCategoriesOpen ? '−' : '+'}
+                {isCategoriesOpen ? "−" : "+"}
               </button>
             </div>
             {isCategoriesOpen && (
@@ -399,7 +425,7 @@ export default function Editor({ sandbox }) {
                 aria-expanded={isProvidersOpen}
                 onClick={() => setIsProvidersOpen((prev) => !prev)}
               >
-                {isProvidersOpen ? '−' : '+'}
+                {isProvidersOpen ? "−" : "+"}
               </button>
             </div>
             {isProvidersOpen && (
@@ -410,11 +436,7 @@ export default function Editor({ sandbox }) {
                     type="button"
                     className="chip"
                     data-active={selectedProviders.includes(provider.id) || undefined}
-                    onClick={() =>
-                      setSelectedProviders((prev) =>
-                        toggleInList(prev, provider.id)
-                      )
-                    }
+                    onClick={() => setSelectedProviders((prev) => toggleInList(prev, provider.id))}
                   >
                     {provider.label}
                     <span className="chip-count">{tagCounts[provider.id] || 0}</span>
@@ -433,7 +455,7 @@ export default function Editor({ sandbox }) {
                 aria-expanded={isTypesOpen}
                 onClick={() => setIsTypesOpen((prev) => !prev)}
               >
-                {isTypesOpen ? '−' : '+'}
+                {isTypesOpen ? "−" : "+"}
               </button>
             </div>
             {isTypesOpen && (
@@ -462,7 +484,7 @@ export default function Editor({ sandbox }) {
                 aria-expanded={isTagsOpen}
                 onClick={() => setIsTagsOpen((prev) => !prev)}
               >
-                {isTagsOpen ? '−' : '+'}
+                {isTagsOpen ? "−" : "+"}
               </button>
             </div>
             {isTagsOpen && (
@@ -486,126 +508,130 @@ export default function Editor({ sandbox }) {
 
         <section className="list-panel">
           {sections.map((section) => {
-            const isCollapsed = collapsedCategories.has(section.id)
+            const isCollapsed = collapsedCategories.has(section.id);
             return (
-            <div key={section.id} className="category-section" data-collapsed={isCollapsed || undefined} data-category={section.id}>
-              <button
-                type="button"
-                className="section-header"
-                onClick={() => toggleCategoryCollapse(section.id)}
+              <div
+                key={section.id}
+                className="category-section"
+                data-collapsed={isCollapsed || undefined}
+                data-category={section.id}
               >
-                <span className="section-toggle">{isCollapsed ? '+' : '−'}</span>
-                <div className="section-title">
-                  <h2>{section.name}</h2>
-                  <p>{section.description}</p>
-                </div>
-                <span className="section-count">
-                  {section.items.length} visible
-                </span>
-              </button>
-              {!isCollapsed && (
-              <div className="item-list">
-                {section.items.map(({ item, depth }, index) => {
-                  const isSelected = selectedSet.has(item.id)
-                  const isInherited = inheritedSet.has(item.id)
-                  const parentName = getParentName(item, itemsById)
-                  const commonItems = (item.commonWith || [])
-                    .map((id) => itemsById.get(id))
-                    .filter(Boolean)
+                <button
+                  type="button"
+                  className="section-header"
+                  onClick={() => toggleCategoryCollapse(section.id)}
+                >
+                  <span className="section-toggle">{isCollapsed ? "+" : "−"}</span>
+                  <div className="section-title">
+                    <h2>{section.name}</h2>
+                    <p>{section.description}</p>
+                  </div>
+                  <span className="section-count">{section.items.length} visible</span>
+                </button>
+                {!isCollapsed && (
+                  <div className="item-list">
+                    {section.items.map(({ item, depth }, index) => {
+                      const isSelected = selectedSet.has(item.id);
+                      const isInherited = inheritedSet.has(item.id);
+                      const parentName = getParentName(item, itemsById);
+                      const commonItems = (item.commonWith || [])
+                        .map((id) => itemsById.get(id))
+                        .filter(Boolean);
 
-                  const hasMetadata = !!(
-                    item.description ||
-                    parentName ||
-                    item.synonyms?.length > 0 ||
-                    item.tags?.length > 0 ||
-                    commonItems.length > 0
-                  )
+                      const hasMetadata = !!(
+                        item.description ||
+                        parentName ||
+                        item.synonyms?.length > 0 ||
+                        item.tags?.length > 0 ||
+                        commonItems.length > 0
+                      );
 
-                  return (
-                    <article
-                      key={item.id}
-                      className="item-card"
-                      data-selected={isSelected || undefined}
-                      data-inherited={isInherited && isSelected || undefined}
-                      data-depth={depth || undefined}
-                      data-delay={Math.min(index, 10) || undefined}
-                      onClick={() => toggleItem(item.id)}
-                    >
-                      <div className="item-main">
-                        {hasMetadata && (
-                          <button
-                            type="button"
-                            className="item-info-btn"
-                            onClick={(e) => e.stopPropagation()}
-                            title="More info"
-                          >
-                            ?
-                          </button>
-                        )}
-                        <div className="item-title">
-                          <h3>{item.name}</h3>
-                          <span className="item-type">{item.type}</span>
-                          {isInherited && isSelected && (
-                            <span className="inherited-badge">inherited</span>
-                          )}
-                        </div>
-                        <div className="item-checkbox" />
-                      </div>
-
-                      {hasMetadata && (
-                        <div
-                          className="item-meta-overlay"
-                          onClick={(event) => event.stopPropagation()}
+                      return (
+                        <article
+                          key={item.id}
+                          className="item-card"
+                          data-selected={isSelected || undefined}
+                          data-inherited={(isInherited && isSelected) || undefined}
+                          data-depth={depth || undefined}
+                          data-delay={Math.min(index, 10) || undefined}
+                          onClick={() => toggleItem(item.id)}
                         >
-                          {item.description && (
-                            <div className="item-description">{item.description}</div>
-                          )}
-                          {parentName && (
-                            <div className="item-parent">Parent: {parentName}</div>
-                          )}
-                          {item.synonyms?.length > 0 && (
-                            <div className="item-synonyms">
-                              Also known as: {item.synonyms.join(', ')}
+                          <div className="item-main">
+                            {hasMetadata && (
+                              <button
+                                type="button"
+                                className="item-info-btn"
+                                onClick={(e) => e.stopPropagation()}
+                                title="More info"
+                              >
+                                ?
+                              </button>
+                            )}
+                            <div className="item-title">
+                              <h3>{item.name}</h3>
+                              <span className="item-type">{item.type}</span>
+                              {isInherited && isSelected && (
+                                <span className="inherited-badge">inherited</span>
+                              )}
+                            </div>
+                            <div className="item-checkbox" />
+                          </div>
+
+                          {hasMetadata && (
+                            <div
+                              className="item-meta-overlay"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {item.description && (
+                                <div className="item-description">{item.description}</div>
+                              )}
+                              {parentName && (
+                                <div className="item-parent">Parent: {parentName}</div>
+                              )}
+                              {item.synonyms?.length > 0 && (
+                                <div className="item-synonyms">
+                                  Also known as: {item.synonyms.join(", ")}
+                                </div>
+                              )}
+                              {item.tags?.length > 0 && (
+                                <div className="item-tags">
+                                  {item.tags.map((tag) => (
+                                    <span key={tag} className="tag">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {commonItems.length > 0 && (
+                                <div className="item-common">
+                                  <span>Common together:</span>
+                                  <div className="common-list">
+                                    {commonItems.map((common) => (
+                                      <button
+                                        key={common.id}
+                                        type="button"
+                                        className="chip"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          addItems([common.id]);
+                                        }}
+                                      >
+                                        + {common.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
-                          {item.tags?.length > 0 && (
-                            <div className="item-tags">
-                              {item.tags.map((tag) => (
-                                <span key={tag} className="tag">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {commonItems.length > 0 && (
-                            <div className="item-common">
-                              <span>Common together:</span>
-                              <div className="common-list">
-                                {commonItems.map((common) => (
-                                  <button
-                                    key={common.id}
-                                    type="button"
-                                    className="chip"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      addItems([common.id])
-                                    }}
-                                  >
-                                    + {common.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </article>
-                  )
-                })}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              )}
-            </div>
-          )})}
+            );
+          })}
         </section>
 
         <aside className="selected-panel">
@@ -622,17 +648,30 @@ export default function Editor({ sandbox }) {
           {!sandbox && activeProject && <CommitLog />}
 
           <div className="panel-header">
-            <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}</h3>
+            <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ""}</h3>
             <div className="copy-menu">
               <button type="button" className="copy-trigger" title="Copy stack">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <rect x="9" y="9" width="13" height="13" rx="2" />
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
               </button>
               <div className="copy-dropdown">
-                <button type="button" onClick={() => handleCopyAs('markdown')}>Markdown</button>
-                <button type="button" onClick={() => handleCopyAs('json')}>JSON</button>
+                <button type="button" onClick={() => handleCopyAs("markdown")}>
+                  Markdown
+                </button>
+                <button type="button" onClick={() => handleCopyAs("json")}>
+                  JSON
+                </button>
               </div>
             </div>
           </div>
@@ -642,10 +681,7 @@ export default function Editor({ sandbox }) {
               {selectedByCategory.map((group) => (
                 <div key={group.category.id} className="selected-group">
                   <div className="selected-group-title">
-                    <span
-                      className="dot"
-                      data-category={group.category.id}
-                    />
+                    <span className="dot" data-category={group.category.id} />
                     {group.category.name}
                   </div>
                   <div className="selected-chips">
@@ -667,9 +703,7 @@ export default function Editor({ sandbox }) {
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              Select items to build a standardized stack output.
-            </div>
+            <div className="empty-state">Select items to build a standardized stack output.</div>
           )}
         </aside>
       </main>
@@ -677,11 +711,24 @@ export default function Editor({ sandbox }) {
       {showAdmin && token && <AdminPanel />}
 
       {sessionExpired && (
-        <div className="session-expired-overlay" onClick={() => { setSessionExpired(false); storeSignOut() }}>
+        <div
+          className="session-expired-overlay"
+          onClick={() => {
+            setSessionExpired(false);
+            storeSignOut();
+          }}
+        >
           <div className="session-expired-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Session Expired</h3>
             <p>Your session has expired. Please sign in again to continue.</p>
-            <button type="button" className="primary" onClick={() => { setSessionExpired(false); storeSignOut() }}>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setSessionExpired(false);
+                storeSignOut();
+              }}
+            >
               Sign in again
             </button>
           </div>
@@ -693,9 +740,13 @@ export default function Editor({ sandbox }) {
       <footer className="app-footer">
         <span>Copyright &copy; {new Date().getFullYear()}</span>
         <a href="https://www.excella.com" target="_blank" rel="noreferrer">
-          <img src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg" alt="Excella" height="14" />
+          <img
+            src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg"
+            alt="Excella"
+            height="14"
+          />
         </a>
       </footer>
     </div>
-  )
+  );
 }

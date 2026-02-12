@@ -27,7 +27,7 @@
 }
 
 .splash-brand h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 1.75rem;
   margin: 0;
   color: var(--ink);
@@ -81,7 +81,7 @@
 
 .splash-divider::before,
 .splash-divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: rgba(15, 23, 42, 0.1);

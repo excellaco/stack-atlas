@@ -1,8 +1,4 @@
-import {
-  CognitoUserPool,
-  CognitoUser,
-  AuthenticationDetails
-} from "amazon-cognito-identity-js";
+import { CognitoUserPool, CognitoUser, AuthenticationDetails } from "amazon-cognito-identity-js";
 import { config } from "./config";
 
 const getUserPool = () => {
@@ -11,7 +7,7 @@ const getUserPool = () => {
   }
   return new CognitoUserPool({
     UserPoolId: config.cognitoUserPoolId,
-    ClientId: config.cognitoClientId
+    ClientId: config.cognitoClientId,
   });
 };
 
@@ -26,21 +22,21 @@ const getCurrentUser = () => {
 export const signIn = (username, password) => {
   const authenticationDetails = new AuthenticationDetails({
     Username: username,
-    Password: password
+    Password: password,
   });
 
   const user = new CognitoUser({
     Username: username,
-    Pool: getUserPool()
+    Pool: getUserPool(),
   });
 
   return new Promise((resolve, reject) => {
     user.authenticateUser(authenticationDetails, {
       onSuccess: (session) => resolve(session),
       onFailure: (error) => reject(error),
-      newPasswordRequired: (userAttributes) => {
+      newPasswordRequired: (_userAttributes) => {
         reject(new Error("Password change required. Please contact an administrator."));
-      }
+      },
     });
   });
 };
@@ -70,7 +66,7 @@ export const parseIdToken = (session) => {
   return {
     sub: payload.sub,
     email: payload.email,
-    groups: payload["cognito:groups"] || []
+    groups: payload["cognito:groups"] || [],
   };
 };
 

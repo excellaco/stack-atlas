@@ -1,9 +1,14 @@
 import { randomUUID } from "crypto";
 import { isAdmin, isEditor } from "../roles.js";
 import {
-  getProjectIndex, putProjectIndex,
-  getStack, putStack, deleteProjectData,
-  listSubsystems, getCatalog, getRoles
+  getProjectIndex,
+  putProjectIndex,
+  getStack,
+  putStack,
+  deleteProjectData,
+  listSubsystems,
+  getCatalog,
+  getRoles,
 } from "../storage.js";
 import { jsonResponse, parseBody, slugify, authenticate } from "./utils.js";
 
@@ -18,15 +23,17 @@ export const handleProjects = async (method, path, event, cors) => {
     const userIsAdmin = await isAdmin(user);
     const projects = index.projects.map((p) => ({
       ...p,
-      canEdit: userIsAdmin || (roles.editors[p.id] || [])
-        .some((e) => (typeof e === "string" ? e : e.sub) === user.sub)
+      canEdit:
+        userIsAdmin ||
+        (roles.editors[p.id] || []).some((e) => (typeof e === "string" ? e : e.sub) === user.sub),
     }));
     return jsonResponse(200, { data: projects }, cors);
   }
 
   if (method === "POST" && path === "/projects") {
     const user = await authenticate(auth);
-    if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+    if (!(await isAdmin(user)))
+      return jsonResponse(403, { message: "Admin access required" }, cors);
     const body = parseBody(event);
     if (!body.name?.trim()) return jsonResponse(400, { message: "Project name is required" }, cors);
     const now = new Date().toISOString();
@@ -41,7 +48,7 @@ export const handleProjects = async (method, path, event, cors) => {
       description: (body.description || "").trim(),
       createdBy: user.sub,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
     index.projects.push(project);
     await putProjectIndex(index);
@@ -55,7 +62,8 @@ export const handleProjects = async (method, path, event, cors) => {
   if (method === "PUT" && projectMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(projectMatch[1]);
-    if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+    if (!(await isAdmin(user)))
+      return jsonResponse(403, { message: "Admin access required" }, cors);
     const body = parseBody(event);
     const index = await getProjectIndex();
     const project = index.projects.find((p) => p.id === projectId);
@@ -70,7 +78,8 @@ export const handleProjects = async (method, path, event, cors) => {
   if (method === "DELETE" && projectMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(projectMatch[1]);
-    if (!await isAdmin(user)) return jsonResponse(403, { message: "Admin access required" }, cors);
+    if (!(await isAdmin(user)))
+      return jsonResponse(403, { message: "Admin access required" }, cors);
     const index = await getProjectIndex();
     const idx = index.projects.findIndex((p) => p.id === projectId);
     if (idx === -1) return jsonResponse(404, { message: "Project not found" }, cors);
@@ -84,7 +93,7 @@ export const handleProjects = async (method, path, event, cors) => {
   const stackMatch = path.match(/^\/projects\/([^/]+)\/stack$/);
 
   if (method === "GET" && stackMatch) {
-    const user = await authenticate(auth);
+    await authenticate(auth);
     const projectId = decodeURIComponent(stackMatch[1]);
     const stack = await getStack(projectId);
     if (!stack) return jsonResponse(404, { message: "Stack not found" }, cors);
@@ -94,9 +103,11 @@ export const handleProjects = async (method, path, event, cors) => {
   if (method === "PUT" && stackMatch) {
     const user = await authenticate(auth);
     const projectId = decodeURIComponent(stackMatch[1]);
-    if (!await isEditor(user, projectId)) return jsonResponse(403, { message: "Editor access required" }, cors);
+    if (!(await isEditor(user, projectId)))
+      return jsonResponse(403, { message: "Editor access required" }, cors);
     const body = parseBody(event);
-    if (!Array.isArray(body.items)) return jsonResponse(400, { message: "items must be an array" }, cors);
+    if (!Array.isArray(body.items))
+      return jsonResponse(400, { message: "items must be an array" }, cors);
     const now = new Date().toISOString();
     const stack = { items: body.items, updatedAt: now, updatedBy: user.sub };
     await putStack(projectId, stack);
@@ -122,16 +133,20 @@ export const handleProjects = async (method, path, event, cors) => {
     const stack = await getStack(projectId);
     const subsystemsList = await listSubsystems(projectId);
     const catalog = await getCatalog();
-    return jsonResponse(200, {
-      data: {
-        project: { ...project, canEdit },
-        stack: stack?.items || [],
-        subsystems: subsystemsList,
-        categories: catalog?.categories || [],
-        items: catalog?.items || [],
-        descriptions: catalog?.descriptions || {}
-      }
-    }, cors);
+    return jsonResponse(
+      200,
+      {
+        data: {
+          project: { ...project, canEdit },
+          stack: stack?.items || [],
+          subsystems: subsystemsList,
+          categories: catalog?.categories || [],
+          items: catalog?.items || [],
+          descriptions: catalog?.descriptions || {},
+        },
+      },
+      cors
+    );
   }
 
   return null;
