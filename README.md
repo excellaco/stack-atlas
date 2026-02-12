@@ -1,6 +1,6 @@
 # Stack Atlas
 
-[![Deploy](https://github.com/excellaco/stack-atlas/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/excellaco/stack-atlas/actions/workflows/deploy.yml)
+[![CI/CD](https://github.com/excellaco/stack-atlas/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/excellaco/stack-atlas/actions/workflows/ci.yml)
 
 Unify how teams describe their technology stacks. Stack Atlas provides a curated catalog of technologies that teams filter, select, and export as standardized stack definitions for side-by-side comparison across programs.
 
