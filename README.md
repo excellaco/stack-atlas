@@ -1,6 +1,6 @@
 # Stack Atlas
 
-[![Deploy](https://github.com/excellaco/stack-atlas/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/excellaco/stack-atlas/actions/workflows/deploy.yml)
+[![CI/CD](https://github.com/excellaco/stack-atlas/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/excellaco/stack-atlas/actions/workflows/ci.yml)
 
 Unify how teams describe their technology stacks. Stack Atlas provides a curated catalog of technologies that teams filter, select, and export as standardized stack definitions for side-by-side comparison across programs.
 
@@ -22,7 +22,7 @@ Unify how teams describe their technology stacks. Stack Atlas provides a curated
 
 | Layer    | Technology                                             |
 | -------- | ------------------------------------------------------ |
-| Frontend | React 18, TypeScript, Vite, Zustand, React Router      |
+| Frontend | React 19, TypeScript, Vite, Zustand, React Router      |
 | Backend  | Node.js 24, TypeScript, AWS Lambda, esbuild            |
 | Auth     | Amazon Cognito (JWT)                                   |
 | Data     | Amazon S3 (JSON documents)                             |
@@ -104,7 +104,7 @@ bash scripts/e2e.sh      # Fetch E2E config from Secrets Manager and run smoke t
 | Frontend | `utils/diff.test.ts`          | Commit diff computation                             |
 | Frontend | `utils/export.test.ts`        | Markdown/JSON export formatting                     |
 
-**E2E smoke tests** (`e2e/smoke.ts`): authenticates via Cognito, exercises project CRUD, stack operations, draft workflow, commit/discard, subsystem CRUD, and admin endpoints against the live deployment.
+**E2E smoke tests** (`e2e/smoke.ts`): authenticates via Cognito, then verifies frontend health, API availability, CORS headers, project listing, and catalog access against the live deployment.
 
 E2E credentials are stored in AWS Secrets Manager (populated by Terraform) — neither CI nor local developers need to set environment variables manually.
 
@@ -124,7 +124,7 @@ npm run security         # Trivy IaC + secret scanning
 
 ## CI Pipeline
 
-The GitHub Actions workflow (`.github/workflows/deploy.yml`) runs on push to `main`:
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main`:
 
 1. **Quality gates** — Prettier, ESLint, Stylelint, TFLint, Terraform format check
 2. **Security scans** — Trivy IaC misconfiguration scan + filesystem secret detection
@@ -137,7 +137,7 @@ The GitHub Actions workflow (`.github/workflows/deploy.yml`) runs on push to `ma
 
 ```
 stack-atlas/
-├── frontend/                  # React 18 SPA (TypeScript)
+├── frontend/                  # React 19 SPA (TypeScript)
 │   └── src/
 │       ├── main.tsx           # Entry point, routes, bootstrap
 │       ├── api.ts             # API client (typed wrappers around fetch)
