@@ -11,6 +11,11 @@ export const computeDiff = (prevSnapshot, currSnapshot) => {
   const stackAdded = [...currStack].filter((id) => !prevStack.has(id))
   const stackRemoved = [...prevStack].filter((id) => !currStack.has(id))
 
+  const prevProviders = new Set(prevSnapshot?.providers || [])
+  const currProviders = new Set(currSnapshot?.providers || [])
+  const providersAdded = [...currProviders].filter((p) => !prevProviders.has(p))
+  const providersRemoved = [...prevProviders].filter((p) => !currProviders.has(p))
+
   const prevSubs = prevSnapshot?.subsystems || {}
   const currSubs = currSnapshot?.subsystems || {}
 
@@ -47,7 +52,7 @@ export const computeDiff = (prevSnapshot, currSnapshot) => {
     })
     .filter(Boolean)
 
-  return { stackAdded, stackRemoved, subsystemsAdded, subsystemsRemoved, subsystemsChanged }
+  return { stackAdded, stackRemoved, providersAdded, providersRemoved, subsystemsAdded, subsystemsRemoved, subsystemsChanged }
 }
 
 export const resolveItemName = (id, itemsById) => {

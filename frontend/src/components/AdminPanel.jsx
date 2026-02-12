@@ -12,7 +12,7 @@ import CatalogItemForm from './CatalogItemForm'
 import CategoryStyles from './CategoryStyles'
 import './AdminPanel.css'
 
-export default function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject, itemsById, catalogCategories, catalogTypes, catalogRawItems, catalogDescriptions, catalogSource, onCatalogPublished }) {
+export default function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject, onCreateSubsystem, onDeleteSubsystem, activeProject, subsystems, itemsById, catalogCategories, catalogTypes, catalogRawItems, catalogDescriptions, catalogSource, onCatalogPublished }) {
   const [tab, setTab] = useState('roles')
   const [roles, setRoles] = useState(null)
   const [users, setUsers] = useState(null)
@@ -28,6 +28,11 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
   const [showCreate, setShowCreate] = useState(false)
   const [newProjName, setNewProjName] = useState('')
   const [newProjDesc, setNewProjDesc] = useState('')
+
+  // Subsystem create state
+  const [showCreateSub, setShowCreateSub] = useState(false)
+  const [newSubName, setNewSubName] = useState('')
+  const [newSubDesc, setNewSubDesc] = useState('')
 
   // Catalog tab state (moved above early return to avoid hooks violation)
   const [editCategories, setEditCategories] = useState(catalogCategories)
@@ -131,6 +136,15 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
     setNewProjName('')
     setNewProjDesc('')
     setShowCreate(false)
+  }
+
+  const handleCreateSub = async (e) => {
+    e.preventDefault()
+    if (!newSubName.trim()) return
+    await onCreateSubsystem(newSubName.trim(), newSubDesc.trim())
+    setNewSubName('')
+    setNewSubDesc('')
+    setShowCreateSub(false)
   }
 
   const toggleCommitExpand = (id) => {
@@ -447,6 +461,39 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
               </form>
             ) : (
               <button type="button" className="ghost admin-new-project-btn" onClick={() => setShowCreate(true)}>+ New Project</button>
+            )}
+
+            {activeProject && (
+              <div className="admin-section">
+                <h4>Subsystems — {activeProject.name}</h4>
+                {subsystems.length > 0 ? (
+                  <div className="admin-table">
+                    {subsystems.map((s) => (
+                      <div key={s.id} className="admin-table-row">
+                        <div className="admin-table-main">
+                          <strong>{s.name}</strong>
+                          {s.description && <span className="admin-table-desc">{s.description}</span>}
+                        </div>
+                        <button type="button" className="ghost danger" onClick={() => {
+                          if (confirm(`Delete subsystem "${s.name}"?`)) onDeleteSubsystem(s.id)
+                        }}>Delete</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="diff-empty">No subsystems</div>
+                )}
+                {showCreateSub ? (
+                  <form className="project-create-form" onSubmit={handleCreateSub}>
+                    <input placeholder="Subsystem name" value={newSubName} onChange={(e) => setNewSubName(e.target.value)} required />
+                    <input placeholder="Description" value={newSubDesc} onChange={(e) => setNewSubDesc(e.target.value)} />
+                    <button type="submit" className="primary">Create</button>
+                    <button type="button" className="ghost" onClick={() => setShowCreateSub(false)}>Cancel</button>
+                  </form>
+                ) : (
+                  <button type="button" className="ghost admin-new-project-btn" onClick={() => setShowCreateSub(true)}>+ New Subsystem</button>
+                )}
+              </div>
             )}
           </section>
         )}

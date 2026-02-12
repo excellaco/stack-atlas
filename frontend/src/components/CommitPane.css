@@ -1,0 +1,92 @@
+.commit-pane {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.commit-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.commit-pane-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.commit-pane-title h4 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.commit-pane-status {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+}
+
+.commit-pane-status.saving {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.commit-pane-status.unsaved {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.commit-pane-status.saved {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.commit-pane-status.idle {
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.commit-pane-toggle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  user-select: none;
+  width: 1.25rem;
+  text-align: center;
+}
+
+.commit-pane-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.commit-pane-input {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 100%;
+}
+
+.commit-pane-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
+}
+
+.commit-pane-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.commit-pane-actions .primary,
+.commit-pane-actions .ghost {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+}

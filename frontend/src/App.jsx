@@ -14,7 +14,7 @@ import { buildExportData, formatExport } from './utils/export'
 import { toggleInList, buildSearchText } from './utils/search'
 import { getParentName } from './utils/diff'
 import AuthBar from './components/AuthBar'
-import CommitDialog from './components/CommitDialog'
+import CommitPane from './components/CommitPane'
 import ProjectSelector from './components/ProjectSelector'
 import AdminPanel from './components/AdminPanel'
 import CommitLog from './components/CommitLog'
@@ -50,15 +50,17 @@ function App() {
   const [subsystems, setSubsystems] = useState([])
   const [activeSubsystem, setActiveSubsystem] = useState(null)
   const [savedStack, setSavedStack] = useState(null)
+  const [savedProviders, setSavedProviders] = useState([])
   const [showAdmin, setShowAdmin] = useState(false)
 
   // Draft/commit state
   const [hasDraft, setHasDraft] = useState(false)
   const [draftStatus, setDraftStatus] = useState('idle') // idle | saving | saved
-  const [showCommitDialog, setShowCommitDialog] = useState(false)
   const [draftSubsystems, setDraftSubsystems] = useState({})
   const autoSaveTimer = useRef(null)
   const skipAutoSave = useRef(false)
+  const performAutoSaveRef = useRef(null)
+  const [commitVersion, setCommitVersion] = useState(0)
 
   // Catalog state — initialized from static data, overridden by API
   const [catalogCategories, setCatalogCategories] = useState(staticCategories)
@@ -96,6 +98,7 @@ function App() {
     { id: 'azure', label: 'Azure' },
     { id: 'gcp', label: 'GCP' }
   ]
+  const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
 
   // Restore session on mount
   useEffect(() => {
@@ -169,6 +172,8 @@ function App() {
     setSubsystems([])
     setActiveSubsystem(null)
     setSavedStack(null)
+    setSavedProviders([])
+    setSelectedProviders([])
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
@@ -181,6 +186,8 @@ function App() {
       setActiveProject(null)
       setActiveSubsystem(null)
       setSavedStack(null)
+      setSavedProviders([])
+      setSelectedProviders([])
       setHasDraft(false)
       setDraftStatus('idle')
       setDraftSubsystems({})
@@ -190,6 +197,7 @@ function App() {
     setActiveProject(project || null)
     setActiveSubsystem(null)
     setSavedStack(null)
+    setSavedProviders([])
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
@@ -205,6 +213,7 @@ function App() {
       const stack = await api.getStack(token, pid)
       const committedItems = stack?.items || []
       setSavedStack(committedItems)
+      setSavedProviders(stack?.providers || [])
 
       // Load subsystems for draft tracking
       const subs = await api.listSubsystems(token, pid)
@@ -219,6 +228,7 @@ function App() {
         const draft = await api.getDraft(token, pid)
         if (draft) {
           setSelectedItems(draft.stack?.items || committedItems)
+          setSelectedProviders(draft.stack?.providers || stack?.providers || [])
           setDraftSubsystems(draft.subsystems || subState)
           setHasDraft(true)
           setDraftStatus('saved')
@@ -233,6 +243,7 @@ function App() {
 
       // No draft — load committed state
       setSelectedItems(committedItems)
+      setSelectedProviders(stack?.providers || [])
       setDraftSubsystems(subState)
       setHasDraft(false)
       setDraftStatus('idle')
@@ -260,7 +271,7 @@ function App() {
         }
       }
       await api.saveDraft(token, activeProject.id, {
-        stack: { items: activeSubsystem ? (savedStack || []) : selectedItems },
+        stack: { items: activeSubsystem ? (savedStack || []) : selectedItems, providers: selectedProviders },
         subsystems: currentSubState
       })
       setHasDraft(true)
@@ -270,7 +281,8 @@ function App() {
       console.error('Auto-save failed:', err)
       setDraftStatus('idle')
     }
-  }, [token, activeProject, activeSubsystem, selectedItems, savedStack, draftSubsystems])
+  }, [token, activeProject, activeSubsystem, selectedItems, selectedProviders, savedStack, draftSubsystems])
+  performAutoSaveRef.current = performAutoSave
 
   const handleCommit = async (message) => {
     if (!token || !activeProject) return
@@ -285,7 +297,9 @@ function App() {
     try {
       const stack = await api.getStack(token, activeProject.id)
       setSavedStack(stack?.items || [])
+      setSavedProviders(stack?.providers || [])
       setSelectedItems(stack?.items || [])
+      setSelectedProviders(stack?.providers || [])
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
       const subState = {}
@@ -297,6 +311,7 @@ function App() {
     } finally {
       skipAutoSave.current = false
     }
+    setCommitVersion((v) => v + 1)
     return commit
   }
 
@@ -311,7 +326,9 @@ function App() {
     try {
       const stack = await api.getStack(token, activeProject.id)
       setSavedStack(stack?.items || [])
+      setSavedProviders(stack?.providers || [])
       setSelectedItems(stack?.items || [])
+      setSelectedProviders(stack?.providers || [])
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
       const subState = {}
@@ -325,17 +342,29 @@ function App() {
     }
   }
 
-  // Debounced auto-save (2.5s after last change)
+  const dirty = useMemo(() => {
+    if (!activeProject || !savedStack) return selectedItems.length > 0 && !!activeProject
+    if (selectedItems.length !== savedStack.length) return true
+    const saved = new Set(savedStack)
+    if (selectedItems.some((id) => !saved.has(id))) return true
+    // Check provider changes
+    if (selectedProviders.length !== savedProviders.length) return true
+    const sp = new Set(savedProviders)
+    if (selectedProviders.some((p) => !sp.has(p))) return true
+    return false
+  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders])
+
+  // Debounced auto-save (2s after last change, only when dirty)
   useEffect(() => {
-    if (!token || !activeProject || !savedStack || skipAutoSave.current) return
+    if (!token || !activeProject || !savedStack || skipAutoSave.current || !dirty) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
-      performAutoSave()
-    }, 2500)
+      performAutoSaveRef.current()
+    }, 2000)
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     }
-  }, [selectedItems, activeProject?.id, token, performAutoSave, savedStack])
+  }, [selectedItems, selectedProviders, activeProject?.id, token, savedStack, dirty])
 
   const handleSelectSubsystem = async (subId) => {
     if (!subId) {
@@ -380,6 +409,8 @@ function App() {
       setActiveProject(null)
       setActiveSubsystem(null)
       setSavedStack(null)
+      setSavedProviders([])
+      setSelectedProviders([])
       setHasDraft(false)
       setDraftStatus('idle')
       setDraftSubsystems({})
@@ -403,13 +434,6 @@ function App() {
       if (savedStack) setSelectedItems([...savedStack])
     }
   }
-
-  const dirty = useMemo(() => {
-    if (!activeProject || !savedStack) return selectedItems.length > 0 && !!activeProject
-    if (selectedItems.length !== savedStack.length) return true
-    const saved = new Set(savedStack)
-    return selectedItems.some((id) => !saved.has(id))
-  }, [selectedItems, savedStack, activeProject])
 
   const toggleCategoryCollapse = (categoryId) => {
     setCollapsedCategories((prev) => {
@@ -446,8 +470,11 @@ function App() {
       if (selectedCategories.length && !selectedCategories.includes(item.category)) {
         return false
       }
-      if (selectedProviders.length && !selectedProviders.some((p) => item.tags?.includes(p))) {
-        return false
+      if (selectedProviders.length) {
+        const itemProviders = PROVIDER_IDS.filter((p) => item.tags?.includes(p))
+        if (itemProviders.length && !itemProviders.some((p) => selectedProviders.includes(p))) {
+          return false
+        }
       }
       if (selectedTypes.length && !selectedTypes.includes(item.type)) {
         return false
@@ -633,31 +660,18 @@ function App() {
         </div>
       </header>
 
-      {user && (
-        <ProjectSelector
-          token={token}
-          projects={projects}
-          activeProject={activeProject}
-          activeSubsystem={activeSubsystem}
-          subsystems={subsystems}
-          onSelectProject={handleSelectProject}
-          onSelectSubsystem={handleSelectSubsystem}
-          canEdit={activeProject ? canEditProject(activeProject.id) : false}
-          isAdmin={isAdmin}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onCreateSubsystem={handleCreateSubsystem}
-          onDeleteSubsystem={handleDeleteSubsystem}
-          dirty={dirty}
-          hasDraft={hasDraft}
-          draftStatus={draftStatus}
-          onCommit={() => setShowCommitDialog(true)}
-          onDiscard={handleDiscard}
-        />
-      )}
-
       <main className="main-grid">
         <aside className="filters-panel">
+          {user && (
+            <ProjectSelector
+              projects={projects}
+              activeProject={activeProject}
+              activeSubsystem={activeSubsystem}
+              subsystems={subsystems}
+              onSelectProject={handleSelectProject}
+              onSelectSubsystem={handleSelectSubsystem}
+            />
+          )}
           <div className="panel-header">
             <h3>Filters</h3>
             <button type="button" className="ghost" onClick={resetFilters}>
@@ -946,8 +960,16 @@ function App() {
                 <strong>{activeProject.name}</strong>
                 {activeSubsystem && <span> / {activeSubsystem.name}</span>}
                 {hasDraft && <span className="draft-badge">Draft</span>}
+                <a
+                  className="ghost project-view-link"
+                  href={`/view/${activeProject.id}${activeSubsystem ? `/${activeSubsystem.id}` : ''}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View
+                </a>
               </div>
-              <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} />
+              <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} />
             </>
           )}
 
@@ -1013,6 +1035,16 @@ function App() {
             </div>
             <pre className="export-body">{exportText}</pre>
           </div>
+
+          {activeProject && canEditProject(activeProject.id) && (
+            <CommitPane
+              dirty={dirty}
+              hasDraft={hasDraft}
+              draftStatus={draftStatus}
+              onCommit={handleCommit}
+              onDiscard={handleDiscard}
+            />
+          )}
         </aside>
       </main>
 
@@ -1023,6 +1055,10 @@ function App() {
           onClose={() => setShowAdmin(false)}
           onCreateProject={handleCreateProject}
           onDeleteProject={handleDeleteProject}
+          onCreateSubsystem={handleCreateSubsystem}
+          onDeleteSubsystem={handleDeleteSubsystem}
+          activeProject={activeProject}
+          subsystems={subsystems}
           itemsById={itemsById}
           catalogCategories={catalogCategories}
           catalogTypes={catalogTypes}
@@ -1036,13 +1072,6 @@ function App() {
             setCatalogDescriptions(catalog.descriptions)
             setCatalogSource('api')
           }}
-        />
-      )}
-
-      {showCommitDialog && token && activeProject && (
-        <CommitDialog
-          onCommit={handleCommit}
-          onClose={() => setShowCommitDialog(false)}
         />
       )}
 

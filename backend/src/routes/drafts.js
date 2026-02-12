@@ -74,7 +74,7 @@ export const handleDrafts = async (method, path, event, cors) => {
 
     const now = new Date().toISOString();
 
-    await putStack(projectId, { items: draft.stack?.items || [], updatedAt: now, updatedBy: user.sub });
+    await putStack(projectId, { items: draft.stack?.items || [], providers: draft.stack?.providers || [], updatedAt: now, updatedBy: user.sub });
 
     const existingSubs = await listSubsystems(projectId);
     const existingSubIds = new Set(existingSubs.map((s) => s.id));
@@ -111,6 +111,7 @@ export const handleDrafts = async (method, path, event, cors) => {
 
     const snapshot = {
       stack: draft.stack?.items || [],
+      providers: draft.stack?.providers || [],
       subsystems: {}
     };
     for (const [subId, subData] of Object.entries(draft.subsystems || {})) {
