@@ -45,6 +45,7 @@ resource "aws_s3_bucket_public_access_block" "data" {
 
 data "aws_iam_policy_document" "lambda" {
   statement {
+    sid = "DataBucketAccess"
     actions = [
       "s3:GetObject",
       "s3:PutObject",
@@ -55,6 +56,15 @@ data "aws_iam_policy_document" "lambda" {
       aws_s3_bucket.data.arn,
       "${aws_s3_bucket.data.arn}/*"
     ]
+  }
+
+  statement {
+    sid = "DataBucketKms"
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey"
+    ]
+    resources = [aws_kms_key.data_bucket.arn]
   }
 }
 
