@@ -1,7 +1,37 @@
+.project-view-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-view-page .app-footer {
+  margin-top: auto;
+}
+
 .project-view {
   max-width: 720px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+  flex: 1;
+  width: 100%;
+}
+
+.project-view-access-denied {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.project-view-access-denied h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--ink);
+}
+
+.project-view-access-denied p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .project-view-loading,

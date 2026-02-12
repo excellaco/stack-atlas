@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Markdown from 'react-markdown'
+import { signIn, signOut, getSession, parseIdToken } from '../auth'
 import * as api from '../api'
 import { enrichItems } from '../data/stackData'
 import { buildExportData, formatExport } from '../utils/export'
+import AuthBar from './AuthBar'
 import './ProjectView.css'
 
 export default function ProjectView() {
@@ -12,12 +14,43 @@ export default function ProjectView() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Auth state
+  const [user, setUser] = useState(null)
+  const [token, setToken] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
   useEffect(() => {
+    getSession().then((session) => {
+      if (session) {
+        const parsed = parseIdToken(session)
+        setUser(parsed)
+        setToken(session.getIdToken().getJwtToken())
+      }
+    }).catch(() => {}).finally(() => setAuthLoading(false))
+  }, [])
+
+  const handleSignIn = async (email, password) => {
+    const session = await signIn(email, password)
+    const parsed = parseIdToken(session)
+    setUser(parsed)
+    setToken(session.getIdToken().getJwtToken())
+  }
+
+  const handleSignOut = () => {
+    signOut()
+    setUser(null)
+    setToken(null)
+  }
+
+  const isAdmin = user?.groups?.includes('admins') || false
+
+  useEffect(() => {
+    if (authLoading || !token) return
     api.getProjectView(projectId)
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
-  }, [projectId])
+  }, [projectId, token, authLoading])
 
   const subsystem = useMemo(() => {
     if (!data || !subsystemId) return null
@@ -28,7 +61,6 @@ export default function ProjectView() {
     if (!data) return []
     if (!subsystem) return data.stack
     const stackSet = new Set(data.stack)
-    ;(subsystem.exclusions || []).forEach((id) => stackSet.delete(id))
     ;(subsystem.additions || []).forEach((id) => stackSet.add(id))
     return Array.from(stackSet)
   }, [data, subsystem])
@@ -41,54 +73,92 @@ export default function ProjectView() {
     return formatExport(exportData, 'markdown')
   }, [data, effectiveStack])
 
-  if (loading) {
-    return (
-      <div className="project-view">
-        <div className="project-view-loading">Loading...</div>
-      </div>
-    )
-  }
+  const renderContent = () => {
+    if (authLoading) {
+      return <div className="project-view-loading">Loading...</div>
+    }
 
-  if (error) {
-    return (
-      <div className="project-view">
-        <div className="project-view-error">{error}</div>
-        <Link to="/" className="project-view-back">Back to Atlas</Link>
-      </div>
-    )
-  }
+    if (!user) {
+      return (
+        <div className="project-view-access-denied">
+          <h2>Sign in required</h2>
+          <p>You must be signed in to view this project.</p>
+        </div>
+      )
+    }
 
-  if (subsystemId && !subsystem) {
+    if (loading) {
+      return <div className="project-view-loading">Loading...</div>
+    }
+
+    if (error) {
+      return (
+        <>
+          <div className="project-view-error">{error}</div>
+          <Link to="/" className="project-view-back">Back to Atlas</Link>
+        </>
+      )
+    }
+
+    if (subsystemId && !subsystem) {
+      return (
+        <>
+          <div className="project-view-error">Subsystem not found</div>
+          <Link to={`/view/${projectId}`} className="project-view-back">View base system</Link>
+        </>
+      )
+    }
+
+    if (!data) return null
+
     return (
-      <div className="project-view">
-        <div className="project-view-error">Subsystem not found</div>
-        <Link to={`/view/${projectId}`} className="project-view-back">View base project</Link>
-      </div>
+      <>
+        <header className="project-view-header">
+          <Link to="/" className="project-view-back">Back to Atlas</Link>
+          <h1>{data.project.name}{subsystem ? ` / ${subsystem.name}` : ''}</h1>
+          {data.project.description && <p>{data.project.description}</p>}
+          {subsystem?.description && <p>{subsystem.description}</p>}
+        </header>
+        <article className="project-view-content">
+          <Markdown>{markdown}</Markdown>
+        </article>
+        {!subsystemId && data.subsystems.length > 0 && (
+          <section className="project-view-subsystems">
+            <h2>Subsystems</h2>
+            {data.subsystems.map((sub) => (
+              <Link key={sub.id} to={`/view/${projectId}/${sub.id}`} className="project-view-subsystem">
+                <h3>{sub.name}</h3>
+                {sub.description && <p>{sub.description}</p>}
+              </Link>
+            ))}
+          </section>
+        )}
+      </>
     )
   }
 
   return (
-    <div className="project-view">
-      <header className="project-view-header">
-        <Link to="/" className="project-view-back">Back to Atlas</Link>
-        <h1>{data.project.name}{subsystem ? ` / ${subsystem.name}` : ''}</h1>
-        {data.project.description && <p>{data.project.description}</p>}
-        {subsystem?.description && <p>{subsystem.description}</p>}
-      </header>
-      <article className="project-view-content">
-        <Markdown>{markdown}</Markdown>
-      </article>
-      {!subsystemId && data.subsystems.length > 0 && (
-        <section className="project-view-subsystems">
-          <h2>Subsystems</h2>
-          {data.subsystems.map((sub) => (
-            <Link key={sub.id} to={`/view/${projectId}/${sub.id}`} className="project-view-subsystem">
-              <h3>{sub.name}</h3>
-              {sub.description && <p>{sub.description}</p>}
-            </Link>
-          ))}
-        </section>
+    <div className="project-view-page">
+      {!authLoading && (
+        <AuthBar
+          user={user}
+          onSignIn={handleSignIn}
+          onSignOut={handleSignOut}
+          isAdmin={isAdmin}
+          onAdminClick={() => {}}
+        />
       )}
+
+      <div className="project-view">
+        {renderContent()}
+      </div>
+
+      <footer className="app-footer">
+        <span>Copyright &copy; {new Date().getFullYear()}</span>
+        <a href="https://www.excella.com" target="_blank" rel="noreferrer">
+          <img src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg" alt="Excella" height="14" />
+        </a>
+      </footer>
     </div>
   )
 }

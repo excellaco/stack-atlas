@@ -71,6 +71,7 @@ module "api" {
     "GET /admin/locks",
     "DELETE /admin/locks/{projectId}/{userSub}",
     "GET /admin/activity",
+    "GET /projects/{id}/view",
     "GET /catalog",
     "PUT /admin/catalog"
   ]
