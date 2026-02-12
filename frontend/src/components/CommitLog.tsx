@@ -241,11 +241,7 @@ function CommitLogBody({
   );
 }
 
-function useCommitLogData() {
-  const token = useStore((s) => s.token);
-  const activeProject = useStore((s) => s.activeProject);
-  const commitVersion = useStore((s) => s.commitVersion);
-  const activeSubsystem = useStore((s) => s.activeSubsystem);
+function useCatalogLookup(): { itemsById: Map<string, EnrichedItem> } {
   const catalogRawItems = useStore((s) => s.catalogRawItems);
   const catalogDescriptions = useStore((s) => s.catalogDescriptions);
   const catalogItems = useMemo(
@@ -256,6 +252,15 @@ function useCommitLogData() {
     [catalogRawItems, catalogDescriptions]
   );
   const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems]);
+  return { itemsById };
+}
+
+function useCommitLogData() {
+  const token = useStore((s) => s.token);
+  const activeProject = useStore((s) => s.activeProject);
+  const commitVersion = useStore((s) => s.commitVersion);
+  const activeSubsystem = useStore((s) => s.activeSubsystem);
+  const { itemsById } = useCatalogLookup();
   const projectId = activeProject?.id;
   const subId = activeSubsystem?.id;
   const [commits, setCommits] = useState<Commit[]>([]);
@@ -298,6 +303,32 @@ function useCommitLogData() {
   };
 }
 
+interface CommitLogHeaderProps {
+  isOpen: boolean;
+  onToggle: () => void;
+  count: number;
+}
+
+function CommitLogHeader({ isOpen, onToggle, count }: Readonly<CommitLogHeaderProps>): React.JSX.Element {
+  return (
+    <div
+      className="commit-log-header"
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+    >
+      <h4>History{count > 0 ? ` (${count})` : ""}</h4>
+      <span className="commit-log-toggle">{isOpen ? "\u2212" : "+"}</span>
+    </div>
+  );
+}
+
 export default function CommitLog(): React.JSX.Element {
   const {
     subId,
@@ -313,21 +344,7 @@ export default function CommitLog(): React.JSX.Element {
 
   return (
     <div className="commit-log">
-      <div
-        className="commit-log-header"
-        role="button"
-        tabIndex={0}
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={(e: React.KeyboardEvent) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setIsOpen(!isOpen);
-          }
-        }}
-      >
-        <h4>History{relevantCommits.length > 0 ? ` (${relevantCommits.length})` : ""}</h4>
-        <span className="commit-log-toggle">{isOpen ? "\u2212" : "+"}</span>
-      </div>
+      <CommitLogHeader isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} count={relevantCommits.length} />
       {isOpen && (
         <CommitLogBody
           loading={loading}

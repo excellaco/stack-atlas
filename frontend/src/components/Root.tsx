@@ -15,6 +15,7 @@
 // Both share state through the Zustand store.
 import { Outlet } from "react-router-dom";
 import { useStore } from "../store";
+import AdminPanel from "./AdminPanel";
 import AuthBar from "./AuthBar";
 import ErrorBoundary from "./ErrorBoundary";
 import SplashScreen from "./SplashScreen";
@@ -39,7 +40,9 @@ function AppFooter(): React.JSX.Element {
 
 export default function Root(): React.JSX.Element {
   const user = useStore((s) => s.user);
+  const token = useStore((s) => s.token);
   const authLoading = useStore((s) => s.authLoading);
+  const showAdmin = useStore((s) => s.showAdmin);
 
   if (authLoading) {
     return (
@@ -82,6 +85,7 @@ export default function Root(): React.JSX.Element {
           </ErrorBoundary>
         </main>
       </div>
+      {showAdmin && token && <AdminPanel />}
       <AppFooter />
       <ConfirmModal />
     </div>

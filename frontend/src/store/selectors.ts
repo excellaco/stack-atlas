@@ -41,24 +41,22 @@ export const selectIsAdmin = (s: StoreState): boolean =>
 // selectDirty drives the auto-save trigger. It compares current selections
 // against last-saved state using set membership (not reference equality).
 // False negatives here = lost work. False positives = extra saves (harmless).
+
+function arraysHaveSameMembers(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(b);
+  return a.every((item) => set.has(item));
+}
+
 export const selectDirty = (s: StoreState): boolean => {
   if (!s.activeProject || !s.lastSavedItems) return false;
-  const selectedItems = s.selectedItems || [];
-  const lastSavedItems = s.lastSavedItems || [];
-  const selectedProviders = s.selectedProviders || [];
-  const lastSavedProviders = s.lastSavedProviders || [];
-  if (selectedItems.length !== lastSavedItems.length) return true;
-  const saved = new Set(lastSavedItems);
-  if (selectedItems.some((id) => !saved.has(id))) return true;
-  if (selectedProviders.length !== lastSavedProviders.length) return true;
-  const sp = new Set(lastSavedProviders);
-  if (selectedProviders.some((p) => !sp.has(p))) return true;
+  if (!arraysHaveSameMembers(s.selectedItems || [], s.lastSavedItems || [])) return true;
+  if (!arraysHaveSameMembers(s.selectedProviders || [], s.lastSavedProviders || [])) return true;
   return false;
 };
 
-export const selectPendingChanges = (s: StoreState): PendingChanges | null => {
-  if (!s.activeProject || !s.savedStack) return null;
-  let committedItems: string[] = s.savedStack;
+function resolveEffectiveCommitted(s: StoreState): string[] {
+  let committedItems: string[] = s.savedStack!;
   if (s.activeSubsystem) {
     const committedSub = (s.subsystems || []).find((sub) => sub.id === s.activeSubsystem!.id);
     if (committedSub) {
@@ -68,16 +66,30 @@ export const selectPendingChanges = (s: StoreState): PendingChanges | null => {
       committedItems = Array.from(parentSet);
     }
   }
-  const selectedItems = s.selectedItems || [];
-  const selectedProviders = s.selectedProviders || [];
-  const savedProviders = s.savedProviders || [];
-  const savedSet = new Set(committedItems);
-  const currentSet = new Set(selectedItems);
-  const itemsAdded: string[] = selectedItems.filter((id) => !savedSet.has(id));
-  const itemsRemoved: string[] = committedItems.filter((id) => !currentSet.has(id));
-  const savedProvSet = new Set(savedProviders);
-  const currProvSet = new Set(selectedProviders);
-  const providersAdded: string[] = selectedProviders.filter((p) => !savedProvSet.has(p));
-  const providersRemoved: string[] = savedProviders.filter((p) => !currProvSet.has(p));
-  return { itemsAdded, itemsRemoved, providersAdded, providersRemoved };
+  return committedItems;
+}
+
+function computeArrayDiff(
+  current: string[],
+  baseline: string[]
+): { added: string[]; removed: string[] } {
+  const baselineSet = new Set(baseline);
+  const currentSet = new Set(current);
+  return {
+    added: current.filter((id) => !baselineSet.has(id)),
+    removed: baseline.filter((id) => !currentSet.has(id)),
+  };
+}
+
+export const selectPendingChanges = (s: StoreState): PendingChanges | null => {
+  if (!s.activeProject || !s.savedStack) return null;
+  const committedItems = resolveEffectiveCommitted(s);
+  const items = computeArrayDiff(s.selectedItems || [], committedItems);
+  const providers = computeArrayDiff(s.selectedProviders || [], s.savedProviders || []);
+  return {
+    itemsAdded: items.added,
+    itemsRemoved: items.removed,
+    providersAdded: providers.added,
+    providersRemoved: providers.removed,
+  };
 };

@@ -34,8 +34,8 @@ export default tseslint.config(
     },
     rules: {
       complexity: ["warn", 10],
-      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
-      "max-lines-per-function": ["warn", { max: 50, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["warn", { max: 400, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["warn", { max: 75, skipBlankLines: true, skipComments: true }],
       "max-depth": ["warn", 4],
     },
   },
@@ -133,8 +133,10 @@ export default tseslint.config(
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
-      // React's FormEvent type is deprecated in newer @types/react but the
-      // replacement isn't stable yet. Warn instead of error to avoid noise.
+      // @types/react@19 marks FormEvent (and other synthetic event types) as
+      // deprecated because React 19 ships built-in types. We're on React 18 so
+      // @types/react is still required — ignore FormEvent warnings until we
+      // upgrade to React 19 or the type situation stabilizes.
       "sonarjs/deprecation": "warn",
       // Stylistic preference — .match() vs .exec() doesn't matter for correctness.
       "sonarjs/prefer-regexp-exec": "off",

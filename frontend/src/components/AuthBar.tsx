@@ -1,38 +1,31 @@
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { selectIsAdmin } from "../store/selectors";
 import "./AuthBar.css";
 
-interface SignInFormProps {
-  onSignIn: (email: string, password: string) => Promise<void>;
+interface SignInFormFieldsProps {
+  emailRef: React.RefObject<HTMLInputElement | null>;
+  email: string;
+  setEmail: React.Dispatch<React.SetStateAction<string>>;
+  password: string;
+  setPassword: React.Dispatch<React.SetStateAction<string>>;
+  loading: boolean;
+  error: string;
+  handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   onCancel: () => void;
 }
 
-function SignInForm({ onSignIn, onCancel }: Readonly<SignInFormProps>): React.JSX.Element {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    emailRef.current?.focus();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await onSignIn(email, password);
-      onCancel();
-    } catch (err: unknown) {
-      setError((err as Error).message || "Sign in failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function SignInFormFields({
+  emailRef,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  loading,
+  error,
+  handleSubmit,
+  onCancel,
+}: Readonly<SignInFormFieldsProps>): React.JSX.Element {
   return (
     <form
       className="auth-form"
@@ -63,6 +56,51 @@ function SignInForm({ onSignIn, onCancel }: Readonly<SignInFormProps>): React.JS
       </button>
       {error && <span className="auth-error">{error}</span>}
     </form>
+  );
+}
+
+interface SignInFormProps {
+  onSignIn: (email: string, password: string) => Promise<void>;
+  onCancel: () => void;
+}
+
+function SignInForm({ onSignIn, onCancel }: Readonly<SignInFormProps>): React.JSX.Element {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await onSignIn(email, password);
+      onCancel();
+    } catch (err: unknown) {
+      setError((err as Error).message || "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SignInFormFields
+      emailRef={emailRef}
+      email={email}
+      setEmail={setEmail}
+      password={password}
+      setPassword={setPassword}
+      loading={loading}
+      error={error}
+      handleSubmit={handleSubmit}
+      onCancel={onCancel}
+    />
   );
 }
 

@@ -1,20 +1,25 @@
 import { useStore } from "../store";
 import "./ConfirmModal.css";
 
+type DialogWithCancel = NonNullable<ReturnType<typeof useStore.getState>["confirmDialog"]> & {
+  cancelLabel?: string;
+};
+
+function resolveDialogProps(dialog: DialogWithCancel) {
+  const { title = "Confirm", message, confirmLabel = "Confirm", variant = "default" } = dialog;
+  const cancelLabel = dialog.cancelLabel ?? "Cancel";
+  return { title, message, confirmLabel, variant, cancelLabel };
+}
+
 export default function ConfirmModal(): React.JSX.Element | null {
   const dialog = useStore((s) => s.confirmDialog);
   const resolveConfirm = useStore((s) => s.resolveConfirm);
 
   if (!dialog) return null;
 
-  const {
-    title = "Confirm",
-    message,
-    confirmLabel = "Confirm",
-    variant = "default",
-  } = dialog as typeof dialog & { cancelLabel?: string };
-
-  const cancelLabel = (dialog as typeof dialog & { cancelLabel?: string }).cancelLabel ?? "Cancel";
+  const { title, message, confirmLabel, variant, cancelLabel } = resolveDialogProps(
+    dialog as DialogWithCancel
+  );
 
   return (
     <div

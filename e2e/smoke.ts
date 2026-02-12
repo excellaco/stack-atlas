@@ -132,25 +132,24 @@ const checks: Check[] = [
 // Test runner
 // ---------------------------------------------------------------------------
 
-async function run(): Promise<void> {
-  let passed = 0;
-  let failed = 0;
-  let token: string | null = null;
-
-  // Try to authenticate if credentials are available
+async function runAuthStep(): Promise<{ token: string | null; passed: number; failed: number }> {
   if (ADMIN_EMAIL && ADMIN_PASSWORD && USER_POOL_ID && CLIENT_ID) {
     try {
-      token = await authenticate();
+      const token = await authenticate();
       console.log("PASS  Auth flow - obtained JWT token");
-      passed++;
+      return { token, passed: 1, failed: 0 };
     } catch (err) {
       console.log(`FAIL  Auth flow - ${(err as Error).message}`);
-      failed++;
+      return { token: null, passed: 0, failed: 1 };
     }
-  } else {
-    console.log("SKIP  Auth flow - credentials not provided");
   }
+  console.log("SKIP  Auth flow - credentials not provided");
+  return { token: null, passed: 0, failed: 0 };
+}
 
+async function runChecks(token: string | null): Promise<{ passed: number; failed: number }> {
+  let passed = 0;
+  let failed = 0;
   for (const check of checks) {
     if (check.requiresAuth && !token) {
       console.log(`SKIP  ${check.name} - no auth token`);
@@ -165,7 +164,14 @@ async function run(): Promise<void> {
       failed++;
     }
   }
+  return { passed, failed };
+}
 
+async function run(): Promise<void> {
+  const auth = await runAuthStep();
+  const results = await runChecks(auth.token);
+  const passed = auth.passed + results.passed;
+  const failed = auth.failed + results.failed;
   console.log(`\n${passed} passed, ${failed} failed, ${checks.length + 1} total`);
   process.exit(failed > 0 ? 1 : 0);
 }

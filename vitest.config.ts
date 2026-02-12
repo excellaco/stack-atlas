@@ -9,5 +9,10 @@ export default defineConfig({
     include: ["backend/src/**/*.test.ts", "frontend/src/**/*.test.ts"],
     environment: "node",
     restoreMocks: true,
+    coverage: {
+      provider: "v8",
+      include: ["backend/src/**/*.ts", "frontend/src/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/data/**"],
+    },
   },
 });

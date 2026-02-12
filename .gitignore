@@ -8,3 +8,5 @@ dist/
 *.zip
 .eslintcache
 .scannerwork/
+coverage/
+*.map

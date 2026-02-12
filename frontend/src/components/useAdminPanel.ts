@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useStore } from "../store";
 import { selectCatalogItems, selectItemsById } from "../store/selectors";
 import * as api from "../api";
@@ -84,8 +84,8 @@ interface ProjectActionsReturn {
   setNewSubName: React.Dispatch<React.SetStateAction<string>>;
   newSubDesc: string;
   setNewSubDesc: React.Dispatch<React.SetStateAction<string>>;
-  handleCreateProject: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  handleCreateSub: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  handleCreateProject: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  handleCreateSub: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }
 
 function useProjectActions(
@@ -99,7 +99,7 @@ function useProjectActions(
   const [newSubName, setNewSubName] = useState("");
   const [newSubDesc, setNewSubDesc] = useState("");
 
-  const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleCreateProject = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!newProjName.trim()) return;
     await storeCreateProject(newProjName.trim(), newProjDesc.trim());
@@ -108,7 +108,7 @@ function useProjectActions(
     setShowCreate(false);
   };
 
-  const handleCreateSub = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleCreateSub = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!newSubName.trim()) return;
     await storeCreateSubsystem(newSubName.trim(), newSubDesc.trim());

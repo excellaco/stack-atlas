@@ -66,11 +66,7 @@ function useSwitchToView(): () => Promise<void> {
   }, [navigate, activeProject, activeSubsystem]);
 }
 
-interface Props {
-  sandbox?: boolean;
-}
-
-export default function Editor({ sandbox }: Readonly<Props>): React.JSX.Element {
+function useEditorData(sandbox: boolean | undefined) {
   const token = useStore((s) => s.token);
   const density = useStore((s) => s.density);
   const catalogCategories = useStore((s) => s.catalogCategories);
@@ -86,22 +82,45 @@ export default function Editor({ sandbox }: Readonly<Props>): React.JSX.Element 
   const sections = useFilteredSections(catalogItems, itemsById, categoryById);
   const hasActualChanges = useHasActualChanges();
 
+  return {
+    token,
+    density,
+    catalogCategories,
+    showAdmin,
+    handleSwitchToView,
+    sections,
+    selectedSet,
+    inheritedSet,
+    selectedByCategory,
+    exportData,
+    itemsById,
+    hasActualChanges,
+  };
+}
+
+interface Props {
+  sandbox?: boolean;
+}
+
+export default function Editor({ sandbox }: Readonly<Props>): React.JSX.Element {
+  const data = useEditorData(sandbox);
+
   const handleCopyAs = async (format: ExportFormat): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(formatExport(exportData, format));
+      await navigator.clipboard.writeText(formatExport(data.exportData, format));
     } catch (error) {
       console.error("Failed to copy output", error);
     }
   };
 
   return (
-    <div className="app" data-density={density}>
-      <CategoryStyles categories={catalogCategories} />
+    <div className="app" data-density={data.density}>
+      <CategoryStyles categories={data.catalogCategories} />
       <ErrorBoundary name="Editor toolbar">
         <EditorTopBar
           sandbox={sandbox}
           onSwitchToView={() => {
-            void handleSwitchToView();
+            void data.handleSwitchToView();
           }}
         />
       </ErrorBoundary>
@@ -111,25 +130,25 @@ export default function Editor({ sandbox }: Readonly<Props>): React.JSX.Element 
         </ErrorBoundary>
         <ErrorBoundary name="Catalog">
           <ListPanel
-            sections={sections}
-            selectedSet={selectedSet}
-            inheritedSet={inheritedSet}
-            itemsById={itemsById}
+            sections={data.sections}
+            selectedSet={data.selectedSet}
+            inheritedSet={data.inheritedSet}
+            itemsById={data.itemsById}
           />
         </ErrorBoundary>
         <ErrorBoundary name="Selection">
           <SelectedPanel
             sandbox={sandbox}
-            selectedByCategory={selectedByCategory}
-            inheritedSet={inheritedSet}
+            selectedByCategory={data.selectedByCategory}
+            inheritedSet={data.inheritedSet}
             handleCopyAs={(format) => {
               void handleCopyAs(format);
             }}
-            hasActualChanges={hasActualChanges}
+            hasActualChanges={data.hasActualChanges}
           />
         </ErrorBoundary>
       </main>
-      {showAdmin && token && <AdminPanel />}
+      {data.showAdmin && data.token && <AdminPanel />}
       <SessionExpiredOverlay />
       <ConfirmModal />
       <AppFooter />

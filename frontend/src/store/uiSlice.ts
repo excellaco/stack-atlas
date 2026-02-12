@@ -6,38 +6,31 @@ import type { UiSlice, StoreSet, StoreGet } from "./types";
 const resolveSetter = <T>(v: T | ((current: T) => T), current: T): T =>
   typeof v === "function" ? (v as (current: T) => T)(current) : v;
 
-// --- Slice creator ---
+// --- Initial state ---
 
-export const createUiSlice = (set: StoreSet, get: StoreGet): UiSlice => ({
-  // Filter state
+const UI_INITIAL_STATE = {
   query: "",
-  selectedCategories: [],
-  selectedTypes: [],
-  selectedTags: [],
+  selectedCategories: [] as string[],
+  selectedTypes: [] as string[],
+  selectedTags: [] as string[],
   isCategoriesOpen: false,
   isProvidersOpen: true,
   isTypesOpen: true,
   isTagsOpen: false,
-
-  // View state
-  viewMode: "hierarchy",
-  density: "compact",
+  viewMode: "hierarchy" as const,
+  density: "compact" as const,
   collapsedCategories: new Set<string>(),
-
-  // Export state
-  exportFormat: "markdown",
+  exportFormat: "markdown" as const,
   isExportOpen: false,
-
-  // Admin panel
   showAdmin: false,
-
-  // Session expired overlay
   sessionExpired: false,
+  confirmDialog: null as UiSlice["confirmDialog"],
+};
 
-  // Confirm dialog
-  confirmDialog: null,
+// --- Slice creator ---
 
-  // Actions
+export const createUiSlice = (set: StoreSet, get: StoreGet): UiSlice => ({
+  ...UI_INITIAL_STATE,
   setQuery: (query: string): void => set({ query }),
   toggleCategory: (id: string): void =>
     set((s) => ({ selectedCategories: toggleInList(s.selectedCategories, id) })),

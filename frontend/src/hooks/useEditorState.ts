@@ -179,20 +179,19 @@ export function useSelectionState(itemsById: Map<string, EnrichedItem>): {
   return { selectedSet, inheritedSet, selectedByCategory, exportData };
 }
 
-export function useFilteredSections(
+function useFilteredItems(
   catalogItems: EnrichedItem[],
   itemsById: Map<string, EnrichedItem>,
   categoryById: Map<string, Category>
-): Section[] {
+): EnrichedItem[] {
   const query = useStore((s) => s.query);
   const selectedCategories = useStore((s) => s.selectedCategories);
   const selectedProviders = useStore((s) => s.selectedProviders);
   const selectedTypes = useStore((s) => s.selectedTypes);
   const selectedTags = useStore((s) => s.selectedTags);
   const viewMode = useStore((s) => s.viewMode);
-  const catalogCategories = useStore((s) => s.catalogCategories);
 
-  const filteredItems = useMemo(() => {
+  return useMemo(() => {
     const q = query.trim().toLowerCase();
     const baseMatches = catalogItems.filter(
       (item) =>
@@ -216,6 +215,16 @@ export function useFilteredSections(
     categoryById,
     itemsById,
   ]);
+}
+
+export function useFilteredSections(
+  catalogItems: EnrichedItem[],
+  itemsById: Map<string, EnrichedItem>,
+  categoryById: Map<string, Category>
+): Section[] {
+  const viewMode = useStore((s) => s.viewMode);
+  const catalogCategories = useStore((s) => s.catalogCategories);
+  const filteredItems = useFilteredItems(catalogItems, itemsById, categoryById);
 
   return useMemo((): Section[] => {
     return catalogCategories

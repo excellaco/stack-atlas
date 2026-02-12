@@ -7,6 +7,23 @@ interface UserRecord {
   name?: string;
 }
 
+function useFilteredEntries(
+  users: Record<string, UserRecord> | null,
+  exclude: (RoleEntry | string)[] | undefined,
+  query: string
+): [string, UserRecord][] {
+  const excludeSet = new Set((exclude || []).map((e) => (typeof e === "string" ? e : e.sub)));
+  return Object.entries(users || {})
+    .filter(([sub]) => !excludeSet.has(sub))
+    .filter(
+      ([, u]) =>
+        !query ||
+        u.email?.toLowerCase().includes(query.toLowerCase()) ||
+        u.name?.toLowerCase().includes(query.toLowerCase())
+    )
+    .slice(0, 10);
+}
+
 interface Props {
   users: Record<string, UserRecord> | null;
   onSelect: (user: RoleEntry) => void;
@@ -20,17 +37,7 @@ export default function UserPicker({
 }: Readonly<Props>): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-
-  const excludeSet = new Set((exclude || []).map((e) => (typeof e === "string" ? e : e.sub)));
-  const entries = Object.entries(users || {})
-    .filter(([sub]) => !excludeSet.has(sub))
-    .filter(
-      ([, u]) =>
-        !query ||
-        u.email?.toLowerCase().includes(query.toLowerCase()) ||
-        u.name?.toLowerCase().includes(query.toLowerCase())
-    )
-    .slice(0, 10);
+  const entries = useFilteredEntries(users, exclude, query);
 
   return (
     <div className="user-picker">
