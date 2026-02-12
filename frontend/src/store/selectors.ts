@@ -2,9 +2,9 @@ import { enrichItems } from "../data/stackData";
 import type { Category, EnrichedItem, PendingChanges } from "../types";
 import type { StoreState } from "./types";
 
-// Catalog-derived selectors
-// These are plain functions that take state and return derived values.
-// Use with useMemo in components for memoization.
+// Selectors are plain functions (not hooks) so they can be unit-tested without
+// React. Components use them inside useMemo for memoization. This pattern keeps
+// derived state logic testable and out of components.
 
 export const selectCatalogItems = (s: StoreState): EnrichedItem[] =>
   enrichItems(s.catalogRawItems || [], s.catalogDescriptions || {});
@@ -38,7 +38,9 @@ export const selectTagList = (tagCounts: Record<string, number>): string[] =>
 export const selectIsAdmin = (s: StoreState): boolean =>
   s.user?.groups?.includes("admins") || false;
 
-// Draft-derived selectors
+// selectDirty drives the auto-save trigger. It compares current selections
+// against last-saved state using set membership (not reference equality).
+// False negatives here = lost work. False positives = extra saves (harmless).
 export const selectDirty = (s: StoreState): boolean => {
   if (!s.activeProject || !s.lastSavedItems) return false;
   const selectedItems = s.selectedItems || [];

@@ -1,3 +1,18 @@
+// Editor — full-screen 3-column layout for editing a project's technology stack.
+//
+// Layout: FilterPanel (left) | ListPanel/catalog (center) | SelectedPanel (right)
+// This replaces the Root layout entirely — the Editor is a separate top-level
+// route, not nested under Root, because the 3-column grid is incompatible with
+// Root's sidebar+content layout.
+//
+// Two modes:
+//   - Authenticated (/edit/:projectId) — loads project, auto-saves drafts,
+//     supports commit/discard. URL params drive project/subsystem selection.
+//   - Sandbox (/sandbox) — anonymous, no project, no API calls. Selection is
+//     local-only. Useful for exploring the catalog without an account.
+//
+// useSwitchToView checks for unsaved changes (selectDirty) and shows a
+// confirmation dialog before navigating away to the read-only project view.
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatExport } from "../utils/export";

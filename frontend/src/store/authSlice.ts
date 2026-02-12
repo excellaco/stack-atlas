@@ -1,3 +1,16 @@
+// AuthSlice manages Cognito authentication: session restore, sign in/out, token refresh.
+//
+// Session lifecycle:
+//   1. restoreSession() runs before React renders (see main.tsx). It checks
+//      Cognito's localStorage cache for an existing session so users don't see
+//      a login screen on refresh. It also registers the 401 error handler.
+//   2. signIn() authenticates via Cognito and extracts user info from the ID token
+//      (not access token — the ID token has email and groups claims we need).
+//   3. startTokenRefresh() sets up a 10-minute interval to proactively refresh
+//      the JWT before it expires (Cognito tokens last 1 hour). If refresh fails
+//      (e.g. user was disabled), sessionExpired is set to show an overlay.
+//   4. signOut() clears all auth + project state and localStorage, ensuring a
+//      clean slate for the next login.
 import {
   signIn as cognitoSignIn,
   signOut as cognitoSignOut,

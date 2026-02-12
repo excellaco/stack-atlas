@@ -1,3 +1,6 @@
+# WAF Web ACL attached to CloudFront. Currently default-allow with no custom rules.
+# Exists to satisfy Trivy's security requirement that CloudFront distributions
+# have WAF protection. Add rate-limiting or IP-blocking rules here as needed.
 resource "aws_wafv2_web_acl" "cloudfront" {
   name        = "${local.resource_prefix}-cf-waf"
   description = "WAF Web ACL for ${var.hostname} CloudFront distribution"
@@ -71,6 +74,9 @@ resource "aws_cloudfront_distribution" "website" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
+  # SPA routing: CloudFront returns index.html for 404/403 errors so that
+  # React Router can handle client-side routing (e.g. /projects/p1/edit).
+  # Without this, refreshing on a deep link returns a CloudFront error page.
   custom_error_response {
     error_code         = 404
     response_code      = 200

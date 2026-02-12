@@ -1,3 +1,6 @@
+// JWT verification using aws-jwt-verify (Cognito's official library).
+// We verify the ID token (not access token) because it contains the user's
+// email and cognito:groups claims, which we need for authorization.
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import type { CognitoJwtVerifierSingleUserPool } from "aws-jwt-verify/cognito-verifier";
 import type { User } from "./types";

@@ -1,3 +1,18 @@
+// Root — layout shell for the non-editor routes (landing page, project view).
+//
+// Three rendering states:
+//   1. authLoading=true  → minimal loading indicator (logo + spinner). This is
+//      brief — restoreSession() in main.tsx resolves quickly from Cognito's
+//      localStorage cache.
+//   2. user=null          → SplashScreen (login form + marketing content). No
+//      sidebar or navigation since there's nothing to show without auth.
+//   3. user exists         → Full app shell: top bar with auth controls, sidebar
+//      with ProjectExplorer tree, and <Outlet> for child routes (LandingContent
+//      at "/" or ProjectView at "/view/:projectId/:subsystemId?").
+//
+// This is separate from the Editor layout intentionally — the Editor uses a
+// 3-column grid that's incompatible with Root's sidebar+content structure.
+// Both share state through the Zustand store.
 import { Outlet } from "react-router-dom";
 import { useStore } from "../store";
 import AuthBar from "./AuthBar";

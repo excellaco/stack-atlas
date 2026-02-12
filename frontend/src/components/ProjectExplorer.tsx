@@ -1,3 +1,17 @@
+// ProjectExplorer — sidebar tree navigation for the Root layout.
+//
+// Lazy subsystem loading: subsystems are fetched on-demand when the user expands
+// a project node (useExpandableProjects). This avoids an N+1 API call pattern
+// on initial load — listing projects is one call, and each project's subsystems
+// are loaded only when the user drills down.
+//
+// The canEdit badge (pencil icon) is driven by Project.canEdit, which the backend
+// sets based on whether the requesting user is an admin or has an editor role for
+// that project. This is purely informational in the explorer — actual edit
+// permission is enforced by the API on every write operation.
+//
+// Active state is determined by matching the current URL pathname against the
+// expected /view/:projectId or /view/:projectId/:subsystemId paths.
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useStore } from "../store";

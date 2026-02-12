@@ -1,3 +1,21 @@
+// DraftSlice manages the editor's working state: what items are selected, auto-save,
+// commit, and discard flows.
+//
+// Key state relationships:
+//   savedStack      — the last committed stack (from S3)
+//   selectedItems   — what the user currently has selected (may differ from savedStack)
+//   lastSavedItems  — what was last auto-saved to the draft (used by selectDirty)
+//
+// Auto-save flow: user toggles items → selectedItems changes → subscription in
+// subscriptions.ts fires → scheduleAutoSave() debounces 2s → performAutoSave()
+// writes draft to API → lastSavedItems updated.
+//
+// Commit flow: performAutoSave() first (flush pending changes) → API commit →
+// refresh committed state from server → update all saved/selected to match.
+//
+// The _skipAutoSave flag prevents auto-save during operations that change
+// selectedItems programmatically (loading a project, switching subsystems,
+// discarding). Without it, the subscription would trigger a save of stale data.
 import * as api from "../api";
 import { toggleInList } from "../utils/search";
 import type { Commit, Subsystem, SubsystemDraftData } from "../types";
@@ -67,6 +85,9 @@ async function doPerformAutoSave(set: StoreSet, get: StoreGet): Promise<void> {
   }
 }
 
+// Computes a subsystem's effective item list by applying its additions/exclusions
+// on top of the parent project's committed stack. This is the core of the
+// inheritance model — subsystems don't store a full item list, just deltas.
 function applySubsystemOverlay(
   committedItems: string[],
   subData: { additions?: string[]; exclusions?: string[] }

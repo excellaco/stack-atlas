@@ -6,4 +6,8 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
+  build: {
+    minify: false,
+    sourcemap: true,
+  },
 });

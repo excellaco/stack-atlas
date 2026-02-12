@@ -1,3 +1,17 @@
+// CatalogSlice manages the technology catalog used by the editor.
+//
+// Dual-source strategy:
+//   1. Static data (stackData.ts) is used as initial state — the editor renders
+//      immediately without waiting for an API call.
+//   2. loadCatalog() fetches the API-published catalog. If it returns valid data,
+//      the static data is replaced. If the API fails (network error, no catalog
+//      published yet), the app silently stays on the static data.
+//
+// This means the first render always has content, and admin-published catalog
+// updates take effect on the next loadCatalog() call (triggered on login).
+//
+// setCatalogFromPublish() is called from AdminPanel after a successful publish
+// so the admin sees their changes immediately without re-fetching.
 import {
   categories as staticCategories,
   types as staticTypes,

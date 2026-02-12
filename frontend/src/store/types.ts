@@ -1,3 +1,13 @@
+// Store type definitions. The store is split into 5 slices:
+//
+// AuthSlice     — Cognito session: sign in/out, token refresh, session restore
+// CatalogSlice  — Technology catalog: categories, items, types (static or API)
+// ProjectSlice  — Project CRUD, subsystem management, stack loading
+// DraftSlice    — Editor state: selected items, auto-save, commit, discard
+// UiSlice       — Filter state, view preferences, modals, admin panel toggle
+//
+// Slices can cross-reference each other via get() — e.g. DraftSlice reads
+// activeProject from ProjectSlice. This is intentional and avoids prop drilling.
 import type {
   Category,
   Catalog,

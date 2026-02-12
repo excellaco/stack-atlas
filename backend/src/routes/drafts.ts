@@ -40,6 +40,8 @@ interface RouteMatch {
   id: string;
 }
 
+// checkLock, buildSnapshot, and buildSubsystem are exported for unit testing.
+// They are pure functions (no I/O) extracted from the route handlers.
 export function checkLock(
   existingDraft: Draft | null,
   userSub: string,

@@ -1,3 +1,20 @@
+// ProjectSlice handles project CRUD, subsystem management, and stack loading.
+//
+// Project loading workflow (loadProject):
+//   1. Fetch committed stack + subsystems from API (fetchProjectData)
+//   2. Try loading the user's draft (tryLoadDraft — 423 means another user holds the lock)
+//   3. Merge: if a draft exists, its items/providers override the committed values
+//   4. Restore active subsystem from localStorage if it still exists
+//   5. If in a subsystem, compute effective items via applySubsystemOverlay
+//
+// The _skipAutoSave flag is set during loadProject and selectSubsystem because
+// these operations change selectedItems programmatically — without the flag,
+// the auto-save subscription would immediately save stale intermediate state.
+//
+// localStorage persistence:
+//   sa_activeProject / sa_activeSubsystem are saved on selection so that
+//   refreshing the page restores the user's context. loadProjects() reads
+//   sa_activeProject on boot and triggers loadProject if the project still exists.
 import * as api from "../api";
 import type { Draft, DraftStatus, Project, Subsystem, SubsystemDraftData } from "../types";
 import type { ProjectSlice, StoreSet, StoreGet, StoreState } from "./types";

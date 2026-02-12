@@ -17,10 +17,15 @@ export default tseslint.config(
       "infrastructure/",
       "scripts/",
       "**/*.min.js",
+      // stackData.ts is a large generated-style data file (~4000 lines).
+      // Linting it adds no value and triggers max-lines violations.
       "frontend/src/data/**",
     ],
   },
 
+  // Complexity limits are enforced as warnings so CI doesn't fail on them,
+  // but they show up in the editor. If a function exceeds these, it should
+  // be refactored — extract helpers, split components, etc.
   {
     ...js.configs.recommended,
     languageOptions: {
@@ -95,9 +100,12 @@ export default tseslint.config(
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.configs.recommended.rules,
+      // These two react-hooks rules from v7+ are too strict for Zustand patterns
+      // where setState calls happen in store actions, not in component effects.
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/preserve-manual-memoization": "off",
       "react/react-in-jsx-scope": "off",
+      // TypeScript handles prop validation; runtime PropTypes are redundant.
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
@@ -106,7 +114,8 @@ export default tseslint.config(
     },
   },
 
-  // Test files: relax complexity rules
+  // Test files use long describe blocks and repeat fixture strings.
+  // Enforcing complexity/size limits on tests hurts readability.
   {
     files: ["**/*.test.ts"],
     rules: {
@@ -116,14 +125,18 @@ export default tseslint.config(
     },
   },
 
-  // SonarJS: code quality rules
+  // SonarJS provides SonarQube-equivalent analysis locally.
+  // Keep prefer-read-only-props ON — it enforces Readonly<> on React props,
+  // which prevents accidental mutation. We fixed all 80+ violations to comply.
   sonarjs.configs.recommended,
 
-  // SonarJS overrides for TypeScript files
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
+      // React's FormEvent type is deprecated in newer @types/react but the
+      // replacement isn't stable yet. Warn instead of error to avoid noise.
       "sonarjs/deprecation": "warn",
+      // Stylistic preference — .match() vs .exec() doesn't matter for correctness.
       "sonarjs/prefer-regexp-exec": "off",
     },
   },

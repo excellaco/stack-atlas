@@ -6,6 +6,9 @@ resource "aws_s3_bucket" "website" {
   })
 }
 
+# SSE-KMS encryption on the website bucket (required by Trivy/security scan).
+# The key policy grants CloudFront decrypt access so it can serve objects
+# directly from S3 via OAC without an intermediate Lambda@Edge.
 resource "aws_kms_key" "website_bucket" {
   description             = "KMS key for ${local.resource_prefix} S3 bucket encryption"
   deletion_window_in_days = 10

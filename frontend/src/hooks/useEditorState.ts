@@ -1,3 +1,27 @@
+// Editor state hooks — filtering pipeline, selection tracking, and URL sync.
+//
+// Filtering pipeline (useFilteredSections):
+//   Items pass through category → provider → type → tag → search query filters.
+//   In hierarchy view mode, if a child matches, its parent is auto-included so
+//   the tree isn't broken (addParentIds). Results are grouped by category into
+//   Sections, with empty categories omitted.
+//
+// Cloud provider matching (matchesProvider):
+//   Items tagged with "aws", "azure", or "gcp" are cloud-provider-specific.
+//   When a provider filter is active, items WITH provider tags must match at
+//   least one selected provider. Items WITHOUT any provider tags always pass —
+//   they're cloud-agnostic (e.g. "Git", "Docker").
+//
+// Inheritance display (useSelectionState.inheritedSet):
+//   When viewing a subsystem, inheritedSet contains items from the parent
+//   project's committed stack that haven't been excluded by the subsystem.
+//   These items show an "inherited" badge in the UI to distinguish them from
+//   items the subsystem added on its own.
+//
+// URL sync (useUrlSync):
+//   The /edit/:projectId/:subsystemId? route params drive project/subsystem
+//   selection. Two effects sync URL → store: one for project, one for subsystem
+//   (subsystem waits for subsystems list to load before syncing).
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { buildTree, flattenTree } from "../utils/tree";
@@ -12,6 +36,9 @@ import {
 } from "../store/selectors";
 import type { EnrichedItem, Category, Section } from "../types";
 
+// These tag values are treated specially as cloud provider filters.
+// Items with any of these tags are considered provider-specific; items
+// without them are cloud-agnostic and pass all provider filters.
 const PROVIDER_IDS = ["aws", "azure", "gcp"];
 
 function matchesCategory(item: EnrichedItem, selectedCategories: string[]): boolean {

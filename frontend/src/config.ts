@@ -1,3 +1,8 @@
+// Config resolution order: runtime config (injected by Terraform into config.js
+// on the S3 bucket) > Vite env vars (for local dev) > empty string.
+// Runtime config is the production path — Terraform writes the real API URL,
+// Cognito pool ID, etc. into a <script> tag that sets window.__APP_CONFIG__.
+// This avoids baking environment-specific values into the build artifact.
 const runtimeConfig = typeof window !== "undefined" ? window.__APP_CONFIG__ : undefined;
 
 const read = (v: string | undefined): string | undefined =>

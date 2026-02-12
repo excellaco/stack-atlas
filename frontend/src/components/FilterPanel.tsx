@@ -1,3 +1,18 @@
+// FilterPanel — left column of the Editor, provides all filter controls.
+//
+// Cloud Provider filter:
+//   Provider IDs ("aws", "azure", "gcp") match against item tags. This is a
+//   deliberate design choice — cloud provider affinity is expressed as tags on
+//   catalog items rather than a separate field, keeping the data model flat.
+//   The PROVIDERS constant here mirrors PROVIDER_IDS in useEditorState.ts.
+//
+// Filter behaviors:
+//   - Categories, Providers, Types: OR within group (match any selected)
+//   - Tags: AND within group (match ALL selected) — note "Tags (match all)" label
+//   - Search: matches against name, description, synonyms, category name, tags
+//
+// Counts (useFilterCounts) show how many catalog items belong to each filter
+// value, helping users understand the catalog distribution before filtering.
 import { useMemo } from "react";
 import { useStore } from "../store";
 import { toggleInList } from "../utils/search";
@@ -14,6 +29,8 @@ interface ProviderItem {
   label: string;
 }
 
+// These IDs correspond to tag values on catalog items. See useEditorState.ts
+// PROVIDER_IDS for the matching filter logic.
 const PROVIDERS: ProviderItem[] = [
   { id: "aws", label: "AWS" },
   { id: "azure", label: "Azure" },

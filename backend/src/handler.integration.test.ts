@@ -1,3 +1,11 @@
+// Integration tests for the Lambda handler. These test the full request flow
+// from event → routing → auth → authorization → storage → response.
+//
+// Mock boundary: ONLY storage.ts (S3) and auth.ts (Cognito JWT) are mocked.
+// Everything else runs for real: route matching, roles.ts authorization logic,
+// utils.ts parsing, and response formatting. This catches integration bugs
+// that unit tests miss (e.g. wrong status codes, missing CORS headers,
+// authorization checks not wired up).
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
 vi.mock("./storage");
@@ -22,6 +30,9 @@ import {
 } from "./storage";
 import type { LambdaEvent, User, Roles } from "./types";
 
+// isLockExpired is a pure function (no S3 calls) so we use the real
+// implementation even though storage.ts is mocked. This avoids reimplementing
+// the 30-minute expiry logic in tests and catches regressions in it.
 const { isLockExpired: realIsLockExpired } =
   await vi.importActual<typeof import("./storage")>("./storage");
 

@@ -1,9 +1,15 @@
 # --- Data bucket ---
+# Stores all application state as JSON: projects, stacks, drafts, commits,
+# roles, catalog, and user registry. The Lambda function reads/writes here
+# directly — there is no database. See backend/src/storage.ts for the key layout.
 
 resource "aws_s3_bucket" "data" {
   bucket = local.data_bucket
 }
 
+# SSE-KMS encryption required by Trivy security scan. The data bucket doesn't
+# need a custom key policy (unlike the website bucket) because only Lambda
+# accesses it, and Lambda's role has KMS permissions via the IAM policy.
 resource "aws_kms_key" "data_bucket" {
   description             = "KMS key for ${local.name_prefix}-data S3 bucket encryption"
   deletion_window_in_days = 10

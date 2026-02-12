@@ -1,3 +1,15 @@
+// Tree utilities for the "hierarchy" view mode in the editor.
+//
+// Items can declare parent relationships via their `parents` array. buildTree()
+// constructs a forest (multiple roots) from the flat item list within a single
+// category. Only the first parent present in the current filtered set is used —
+// an item with parents: ["a", "b"] will be placed under "a" if it exists in the
+// set, otherwise under "b". If no parent is present, the item becomes a root.
+//
+// flattenTree() converts the forest into a flat array with depth info, which
+// the ListPanel renders as a flat list with CSS-based indentation (data-depth
+// attribute → left padding). This is simpler than nested DOM elements and works
+// well with virtual scrolling if needed later.
 import type { EnrichedItem, TreeNode, FlattenedNode } from "../types";
 
 export const buildTree = (categoryItems: EnrichedItem[]): TreeNode[] => {

@@ -19,6 +19,11 @@ import type {
   User,
 } from "./types";
 
+// All persistence goes through S3 as a JSON document store. No database.
+// This keeps infrastructure simple (just a bucket) and makes the data fully
+// portable — you can inspect/edit state by reading S3 objects directly.
+// The tradeoff is no transactions or atomic updates, which is acceptable
+// for this app's concurrency model (optimistic locking via drafts).
 const s3 = new S3Client({});
 const BUCKET: string | undefined = process.env.DATA_BUCKET;
 
@@ -113,6 +118,9 @@ export const deleteSubsystem = async (projectId: string, subsystemId: string): P
 
 // --- Roles ---
 
+// Roles are cached for the lifetime of the Lambda invocation. This avoids
+// repeated S3 reads within a single request (roles are checked in auth + routes).
+// The cache resets naturally when Lambda cold-starts or scales.
 let rolesCache: Roles | null = null;
 
 export const getRoles = async (): Promise<Roles> => {
@@ -149,7 +157,10 @@ export const putCatalog = async (catalog: Catalog): Promise<void> => {
 
 // --- Drafts ---
 
-const LOCK_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+// Draft locks prevent two users from editing the same project simultaneously.
+// The 30-minute expiry is a safety net — if a user closes their browser without
+// discarding, the lock auto-expires so others aren't permanently blocked.
+const LOCK_EXPIRY_MS = 30 * 60 * 1000;
 
 export const getDraft = async (userSub: string, projectId: string): Promise<Draft | null> => {
   return readJson<Draft>(`drafts/${userSub}/${projectId}.json`);
@@ -194,6 +205,9 @@ export const appendCommit = async (projectId: string, commit: CommitEntry): Prom
 
 // --- User Registry ---
 
+// Dedup within a single Lambda invocation to avoid writing the same user
+// to S3 on every request. The Set resets on cold start, which is fine —
+// subsequent writes are idempotent (they just update firstSeen if missing).
 const registeredThisInvocation = new Set<string>();
 
 export const getUserRegistry = async (): Promise<UserRegistry> => {

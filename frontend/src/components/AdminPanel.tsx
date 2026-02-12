@@ -1,3 +1,21 @@
+// AdminPanel — overlay modal with five admin capability tabs.
+//
+// Tabs:
+//   Roles    — Manage admins (from Cognito groups) and per-project editors.
+//              Admins can edit all projects; editors only their assigned ones.
+//   Catalog  — Upload/edit the technology catalog. "Publish" writes it to the
+//              API, replacing the static bundled data for all users. "Seed from
+//              static" resets to the bundled stackData.ts as a starting point.
+//   Projects — Create/delete projects and subsystems. Shows editor assignments.
+//   Locks    — View active draft locks (who's editing what). Break locks if a
+//              user's session expired without releasing (30-minute auto-expiry
+//              handles most cases, but manual break is available for admins).
+//   Activity — Cross-project commit history with expandable diffs showing what
+//              items/providers/subsystems changed in each commit.
+//
+// The panel is guarded by `showAdmin && token` in Editor.tsx — only renders for
+// authenticated users who clicked the admin toggle. The backend additionally
+// checks the user's Cognito group membership for all admin API calls.
 import useAdminPanel from "./useAdminPanel";
 import type { AdminPanelReturn } from "./useAdminPanel";
 import AdminRolesTab from "./AdminRolesTab";

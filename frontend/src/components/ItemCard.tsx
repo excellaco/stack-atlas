@@ -1,3 +1,23 @@
+// ItemCard — a single technology item in the catalog list.
+//
+// Interaction model:
+//   Click (or Enter/Space) toggles selection. The entire card is a button for
+//   accessibility. Clicking the info button or metadata overlay stops propagation
+//   so it doesn't toggle the item.
+//
+// Visual states:
+//   - data-selected: item is in the user's current selection
+//   - data-inherited: item was inherited from parent project stack (subsystem
+//     view only). Shows an "inherited" badge to distinguish from items the
+//     subsystem added directly.
+//   - data-depth: indentation level in hierarchy view (CSS uses this for
+//     left padding). Only set in hierarchy view mode.
+//
+// Metadata overlay:
+//   Shown on hover/focus of the info button. Contains description, parent name
+//   (in hierarchy), synonyms, tags, and "common together" suggestions. The
+//   commonWith items are shown as quick-add chips — clicking them adds the
+//   related item to the selection.
 import { getParentName } from "../utils/diff";
 import type { EnrichedItem } from "../types";
 

@@ -1,3 +1,11 @@
+# E2E test configuration stored in Secrets Manager so that neither CI nor
+# local developers need to manually set environment variables. The secret
+# is populated by Terraform with values from the live infrastructure.
+# CI reads it in the post-deploy E2E step; locally, `scripts/e2e.sh` does the same.
+#
+# The "e2e" user is defined in identity.tf as part of the seed_users map.
+# It must be admin = true so E2E tests can exercise authenticated admin flows.
+
 resource "aws_secretsmanager_secret" "e2e_config" {
   name = "${local.name_prefix}-e2e-config"
 

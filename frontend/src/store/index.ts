@@ -1,3 +1,7 @@
+// Zustand store composed from slices. Each slice owns a domain (auth, catalog,
+// projects, drafts, UI) and can access other slices via get(). The store uses
+// subscribeWithSelector middleware for the auto-save subscription in
+// subscriptions.ts, which watches selectedItems/selectedProviders changes.
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
 import { createAuthSlice } from "./authSlice";

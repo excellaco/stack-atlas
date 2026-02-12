@@ -22,7 +22,9 @@ locals {
     parmjeet = { email = "parmjeet@stack-atlas.com", name = "Parmjeet", admin = true }
     uscis    = { email = "uscis@stack-atlas.com", name = "USCIS", admin = false }
     hhs      = { email = "hhs@stack-atlas.com", name = "HHS", admin = false }
-    e2e      = { email = "e2e@stack-atlas.com", name = "E2E", admin = true }
+    # Dedicated E2E test user — admin so smoke tests can exercise all authenticated routes.
+    # Credentials are stored in Secrets Manager (see e2e.tf), not displayed in deploy output.
+    e2e = { email = "e2e@stack-atlas.com", name = "E2E", admin = true }
   }
 
   seed_admins = { for k, v in local.seed_users : k => v if v.admin }
@@ -31,7 +33,9 @@ locals {
 resource "random_password" "seed" {
   for_each = local.seed_users
 
-  length      = 16
+  length = 16
+  # special = false avoids characters that break shell quoting when displayed
+  # in deploy.sh output or pasted into login forms.
   special     = false
   min_upper   = 1
   min_lower   = 1
@@ -41,9 +45,11 @@ resource "random_password" "seed" {
 resource "aws_cognito_user" "seed" {
   for_each = local.seed_users
 
-  user_pool_id   = module.cognito.user_pool_id
-  username       = each.value.email
-  password       = random_password.seed[each.key].result
+  user_pool_id = module.cognito.user_pool_id
+  username     = each.value.email
+  password     = random_password.seed[each.key].result
+  # SUPPRESS prevents Cognito from sending a welcome email to seed users
+  # (they're not real people — they're either test accounts or org placeholders).
   message_action = "SUPPRESS"
 
   attributes = {

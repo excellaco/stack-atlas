@@ -30,12 +30,15 @@ jobs:
           npm ci --prefix backend
       - name: Initialize TFLint rules
         run: tflint --chdir infrastructure/terraform --init
+      # --- Quality gates (all must pass before deploy) ---
       - name: Lint
         run: |
           npm run format:check
           npm run lint
           npm run fmt:tf:check
           npm run lint:tf
+      # Trivy runs two scans: IaC misconfigurations in Terraform, and secret
+      # detection across the whole repo. Both fail the pipeline on HIGH/CRITICAL.
       - name: Security scan (IaC)
         uses: aquasecurity/trivy-action@0.33.1
         with:
@@ -55,6 +58,7 @@ jobs:
         run: npm run typecheck
       - name: Test
         run: npm test
+      # --- Deploy (requires AWS credentials) ---
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE }}
@@ -62,6 +66,9 @@ jobs:
           aws-region: us-east-1
       - name: Deploy
         run: bash scripts/deploy.sh
+      # --- Post-deploy verification ---
+      # E2E reads credentials from Secrets Manager (populated by Terraform in e2e.tf).
+      # This runs against the live deployment, not mocks.
       - name: E2E smoke test
         run: |
           SECRET=$(aws secretsmanager get-secret-value \

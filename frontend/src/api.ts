@@ -1,3 +1,15 @@
+// API client — thin typed wrappers around a central request() function.
+//
+// Key patterns:
+//   - All authenticated requests send Bearer token in Authorization header.
+//   - 401 responses trigger the authErrorHandler callback (registered by
+//     authSlice.restoreSession), which sets sessionExpired in the store to
+//     show the "session expired" overlay.
+//   - Response unwrapping: the backend returns { data: T } for list endpoints
+//     and T directly for single-resource endpoints. request() handles both via
+//     the `result.data ?? result` pattern.
+//   - 204 (No Content) returns null — used by DELETE endpoints.
+//   - Path segments are encodeURIComponent'd to handle IDs with special chars.
 import { config } from "./config";
 import type {
   Catalog,

@@ -32,7 +32,9 @@ resource "aws_iam_openid_connect_provider" "github" {
 
   client_id_list = [local.github_oidc_audience]
 
-  # GitHub's documented root certificate thumbprint.
+  # GitHub's documented root certificate thumbprint. AWS requires this even
+  # though it doesn't actually validate it for GitHub OIDC — it's a legacy
+  # requirement of the aws_iam_openid_connect_provider resource.
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 
   tags = {
@@ -75,6 +77,10 @@ resource "aws_iam_role" "github_deploy" {
   }
 }
 
+# This policy is intentionally verbose — every permission is explicitly listed
+# rather than using wildcards. When adding new AWS resources to the project,
+# you must add the corresponding permissions here or CI deploy will fail.
+# Split into separate statements per service for readability and auditability.
 data "aws_iam_policy_document" "github_deploy" {
   statement {
     sid       = "CallerIdentity"
@@ -265,6 +271,9 @@ data "aws_iam_policy_document" "github_deploy" {
     ]
   }
 
+  # Secrets Manager permissions are needed for two purposes:
+  # 1. Terraform creates/updates the E2E config secret during deploy (e2e.tf)
+  # 2. The post-deploy CI step reads the secret to run E2E smoke tests
   statement {
     sid       = "SecretsManagerList"
     effect    = "Allow"
