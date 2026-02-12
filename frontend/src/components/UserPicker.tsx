@@ -1,0 +1,69 @@
+import { useState } from "react";
+import type { RoleEntry } from "../types";
+import "./UserPicker.css";
+
+interface UserRecord {
+  email: string;
+  name?: string;
+}
+
+interface Props {
+  users: Record<string, UserRecord> | null;
+  onSelect: (user: RoleEntry) => void;
+  exclude?: (RoleEntry | string)[];
+}
+
+export default function UserPicker({
+  users,
+  onSelect,
+  exclude,
+}: Readonly<Props>): React.JSX.Element {
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const excludeSet = new Set((exclude || []).map((e) => (typeof e === "string" ? e : e.sub)));
+  const entries = Object.entries(users || {})
+    .filter(([sub]) => !excludeSet.has(sub))
+    .filter(
+      ([, u]) =>
+        !query ||
+        u.email?.toLowerCase().includes(query.toLowerCase()) ||
+        u.name?.toLowerCase().includes(query.toLowerCase())
+    )
+    .slice(0, 10);
+
+  return (
+    <div className="user-picker">
+      <input
+        type="text"
+        placeholder="Search users..."
+        value={query}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+          setQuery(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+      />
+      {isOpen && entries.length > 0 && (
+        <div className="user-picker-dropdown">
+          {entries.map(([sub, u]) => (
+            <button
+              key={sub}
+              type="button"
+              className="user-picker-option"
+              onMouseDown={() => {
+                onSelect({ sub, email: u.email });
+                setQuery("");
+                setIsOpen(false);
+              }}
+            >
+              <span className="user-picker-email">{u.email}</span>
+              {u.name && <span className="user-picker-name">{u.name}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

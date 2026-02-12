@@ -5,8 +5,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import sonarjs from "eslint-plugin-sonarjs";
 import prettier from "eslint-config-prettier";
+import tseslint from "typescript-eslint";
 
-export default [
+export default tseslint.config(
   {
     ignores: [
       "node_modules/",
@@ -33,9 +34,28 @@ export default [
     },
   },
 
+  // TypeScript: recommended type-checked rules
+  ...tseslint.configs.recommendedTypeChecked,
+
+  // TypeScript parser options
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+
+  // Disable type-checked rules for non-TS files (config files, etc.)
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    ...tseslint.configs.disableTypeChecked,
+  },
+
   // Backend: Node.js
   {
-    files: ["backend/src/**/*.js"],
+    files: ["backend/src/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -43,14 +63,15 @@ export default [
       },
     },
     rules: {
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "no-unused-vars": "off",
       "no-console": "off",
     },
   },
 
   // Frontend: React + Browser
   {
-    files: ["frontend/src/**/*.{js,jsx}"],
+    files: ["frontend/src/**/*.{ts,tsx}"],
     plugins: {
       react,
       "react-hooks": reactHooks,
@@ -77,13 +98,23 @@ export default [
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "no-unused-vars": "off",
     },
   },
 
   // SonarJS: code quality rules
   sonarjs.configs.recommended,
 
+  // SonarJS overrides for TypeScript files
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "sonarjs/deprecation": "warn",
+      "sonarjs/prefer-regexp-exec": "off",
+    },
+  },
+
   // Prettier: must be last
-  prettier,
-];
+  prettier
+);
