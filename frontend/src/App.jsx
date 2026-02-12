@@ -1,18 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  categories as staticCategories,
-  items as staticItems,
-  types as staticTypes,
-  rawItems as staticRawItems,
-  descriptionById as staticDescriptions,
-  enrichItems
-} from './data/stackData'
-import { signIn, signOut, getSession, parseIdToken, getFreshToken } from './auth'
-import * as api from './api'
+import { useEffect, useMemo } from 'react'
 import { buildTree, flattenTree } from './utils/tree'
 import { buildExportData, formatExport } from './utils/export'
-import { toggleInList, buildSearchText } from './utils/search'
+import { buildSearchText } from './utils/search'
+import { toggleInList } from './utils/search'
 import { getParentName } from './utils/diff'
+import { useStore } from './store'
+import {
+  selectCatalogItems, selectItemsById, selectCategoryById,
+  selectCategoryCounts, selectTagCounts, selectTagList
+} from './store/selectors'
 import AuthBar from './components/AuthBar'
 import CommitPane from './components/CommitPane'
 import ProjectSelector from './components/ProjectSelector'
@@ -21,545 +17,104 @@ import CommitLog from './components/CommitLog'
 import CategoryStyles from './components/CategoryStyles'
 import './App.css'
 
-// --- Main App ---
+const PROVIDERS = [
+  { id: 'aws', label: 'AWS' },
+  { id: 'azure', label: 'Azure' },
+  { id: 'gcp', label: 'GCP' }
+]
+const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
 
 function App() {
-  const [query, setQuery] = useState('')
-  const [selectedCategories, setSelectedCategories] = useState([])
-  const [selectedTypes, setSelectedTypes] = useState([])
-  const [selectedTags, setSelectedTags] = useState([])
-  const [selectedProviders, setSelectedProviders] = useState([])
-  const [selectedItems, setSelectedItems] = useState([])
-  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
-  const [isProvidersOpen, setIsProvidersOpen] = useState(true)
-  const [isTypesOpen, setIsTypesOpen] = useState(true)
-  const [isTagsOpen, setIsTagsOpen] = useState(false)
-  const [viewMode, setViewMode] = useState('hierarchy')
-  const [density, setDensity] = useState('compact')
-  const [collapsedCategories, setCollapsedCategories] = useState(new Set())
-  const [exportFormat, setExportFormat] = useState('markdown')
-  const [isExportOpen, setIsExportOpen] = useState(false)
+  // UI state
+  const query = useStore((s) => s.query)
+  const setQuery = useStore((s) => s.setQuery)
+  const selectedCategories = useStore((s) => s.selectedCategories)
+  const toggleCategory = useStore((s) => s.toggleCategory)
+  const selectedTypes = useStore((s) => s.selectedTypes)
+  const toggleType = useStore((s) => s.toggleType)
+  const selectedTags = useStore((s) => s.selectedTags)
+  const toggleTag = useStore((s) => s.toggleTag)
+  const isCategoriesOpen = useStore((s) => s.isCategoriesOpen)
+  const setIsCategoriesOpen = useStore((s) => s.setIsCategoriesOpen)
+  const isProvidersOpen = useStore((s) => s.isProvidersOpen)
+  const setIsProvidersOpen = useStore((s) => s.setIsProvidersOpen)
+  const isTypesOpen = useStore((s) => s.isTypesOpen)
+  const setIsTypesOpen = useStore((s) => s.setIsTypesOpen)
+  const isTagsOpen = useStore((s) => s.isTagsOpen)
+  const setIsTagsOpen = useStore((s) => s.setIsTagsOpen)
+  const viewMode = useStore((s) => s.viewMode)
+  const setViewMode = useStore((s) => s.setViewMode)
+  const density = useStore((s) => s.density)
+  const setDensity = useStore((s) => s.setDensity)
+  const collapsedCategories = useStore((s) => s.collapsedCategories)
+  const toggleCategoryCollapse = useStore((s) => s.toggleCategoryCollapse)
+  const exportFormat = useStore((s) => s.exportFormat)
+  const setExportFormat = useStore((s) => s.setExportFormat)
+  const isExportOpen = useStore((s) => s.isExportOpen)
+  const setIsExportOpen = useStore((s) => s.setIsExportOpen)
+  const showAdmin = useStore((s) => s.showAdmin)
+  const sessionExpired = useStore((s) => s.sessionExpired)
+  const setSessionExpired = useStore((s) => s.setSessionExpired)
+  const resetFilters = useStore((s) => s.resetFilters)
 
-  // Auth state
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [sessionExpired, setSessionExpired] = useState(false)
+  // Auth
+  const user = useStore((s) => s.user)
+  const token = useStore((s) => s.token)
+  const authLoading = useStore((s) => s.authLoading)
+  const storeSignOut = useStore((s) => s.signOut)
+  const startTokenRefresh = useStore((s) => s.startTokenRefresh)
 
-  // Project state
-  const [projects, setProjects] = useState([])
-  const [activeProject, setActiveProject] = useState(null)
-  const [subsystems, setSubsystems] = useState([])
-  const [activeSubsystem, setActiveSubsystem] = useState(null)
-  const [savedStack, setSavedStack] = useState(null)
-  const [savedProviders, setSavedProviders] = useState([])
-  const [lastSavedItems, setLastSavedItems] = useState(null)
-  const [lastSavedProviders, setLastSavedProviders] = useState([])
-  const [showAdmin, setShowAdmin] = useState(false)
+  // Project/draft (only what App.jsx layout needs)
+  const activeProject = useStore((s) => s.activeProject)
+  const activeSubsystem = useStore((s) => s.activeSubsystem)
+  const selectedItems = useStore((s) => s.selectedItems)
+  const selectedProviders = useStore((s) => s.selectedProviders)
+  const setSelectedProviders = useStore((s) => s.setSelectedProviders)
+  const savedStack = useStore((s) => s.savedStack)
+  const hasDraft = useStore((s) => s.hasDraft)
+  const toggleItem = useStore((s) => s.toggleItem)
+  const addItems = useStore((s) => s.addItems)
+  const removeItem = useStore((s) => s.removeItem)
+  const clearSelection = useStore((s) => s.clearSelection)
 
-  // Draft/commit state
-  const [hasDraft, setHasDraft] = useState(false)
-  const [draftStatus, setDraftStatus] = useState('idle') // idle | saving | saved
-  const [draftSubsystems, setDraftSubsystems] = useState({})
-  const autoSaveTimer = useRef(null)
-  const skipAutoSave = useRef(false)
-  const performAutoSaveRef = useRef(null)
-  const [commitVersion, setCommitVersion] = useState(0)
-
-  // Catalog state — initialized from static data, overridden by API
-  const [catalogCategories, setCatalogCategories] = useState(staticCategories)
-  const [catalogTypes, setCatalogTypes] = useState(staticTypes)
-  const [catalogRawItems, setCatalogRawItems] = useState(staticRawItems)
-  const [catalogDescriptions, setCatalogDescriptions] = useState(staticDescriptions)
-  const [catalogSource, setCatalogSource] = useState('static')
+  // Catalog
+  const catalogCategories = useStore((s) => s.catalogCategories)
+  const catalogTypes = useStore((s) => s.catalogTypes)
+  const catalogRawItems = useStore((s) => s.catalogRawItems)
+  const catalogDescriptions = useStore((s) => s.catalogDescriptions)
 
   const catalogItems = useMemo(
-    () => enrichItems(catalogRawItems, catalogDescriptions),
+    () => selectCatalogItems({ catalogRawItems, catalogDescriptions }),
     [catalogRawItems, catalogDescriptions]
   )
   const itemsById = useMemo(
-    () => new Map(catalogItems.map((item) => [item.id, item])),
+    () => selectItemsById(catalogItems),
     [catalogItems]
   )
   const categoryById = useMemo(
-    () => new Map(catalogCategories.map((c) => [c.id, c])),
+    () => selectCategoryById({ catalogCategories }),
     [catalogCategories]
   )
   const categoryCounts = useMemo(
-    () => catalogItems.reduce((acc, item) => { acc[item.category] = (acc[item.category] || 0) + 1; return acc }, {}),
+    () => selectCategoryCounts(catalogItems),
     [catalogItems]
   )
   const tagCounts = useMemo(
-    () => catalogItems.reduce((acc, item) => { (item.tags || []).forEach((tag) => { acc[tag] = (acc[tag] || 0) + 1 }); return acc }, {}),
+    () => selectTagCounts(catalogItems),
     [catalogItems]
   )
   const tagList = useMemo(
-    () => Object.entries(tagCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 10).map(([tag]) => tag),
+    () => selectTagList(tagCounts),
     [tagCounts]
   )
-  const PROVIDERS = [
-    { id: 'aws', label: 'AWS' },
-    { id: 'azure', label: 'Azure' },
-    { id: 'gcp', label: 'GCP' }
-  ]
-  const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
 
-  // Restore session on mount + wire up 401 handler
-  useEffect(() => {
-    api.setOnAuthError(() => setSessionExpired(true))
-    getSession().then((session) => {
-      if (session) {
-        const parsed = parseIdToken(session)
-        setUser(parsed)
-        setToken(session.getIdToken().getJwtToken())
-      }
-    }).catch(() => {}).finally(() => setAuthLoading(false))
-  }, [])
-
-  // Refresh token every 10 minutes to stay ahead of the 1-hour Cognito expiry
+  // Token refresh
   useEffect(() => {
     if (!token) return
-    const interval = setInterval(async () => {
-      const fresh = await getFreshToken()
-      if (fresh) {
-        setToken(fresh)
-      } else {
-        setSessionExpired(true)
-      }
-    }, 10 * 60 * 1000)
-    return () => clearInterval(interval)
+    return startTokenRefresh()
   }, [token])
 
-  // Load catalog from API when authenticated
-  useEffect(() => {
-    if (!token) return
-    api.getCatalog(token)
-      .then((catalog) => {
-        setCatalogCategories(catalog.categories)
-        setCatalogTypes(catalog.types)
-        setCatalogRawItems(catalog.items)
-        setCatalogDescriptions(catalog.descriptions)
-        setCatalogSource('api')
-      })
-      .catch(() => setCatalogSource('static'))
-  }, [token])
-
-  // Load projects when authenticated, restore last selection from localStorage
-  useEffect(() => {
-    if (!token) {
-      setProjects([])
-      setActiveProject(null)
-      setSubsystems([])
-      setActiveSubsystem(null)
-      return
-    }
-    api.listProjects(token).then((list) => {
-      setProjects(list)
-      const savedProjectId = localStorage.getItem('sa_activeProject')
-      if (savedProjectId) {
-        const project = list.find((p) => p.id === savedProjectId)
-        if (project) {
-          setActiveProject(project)
-          handleLoadProject(savedProjectId)
-        }
-      }
-    }).catch(() => setProjects([]))
-  }, [token])
-
-  // Load subsystems when project changes, restore last selection
-  useEffect(() => {
-    if (!token || !activeProject) {
-      setSubsystems([])
-      setActiveSubsystem(null)
-      return
-    }
-    api.listSubsystems(token, activeProject.id).then((subs) => {
-      setSubsystems(subs)
-      const savedSubId = localStorage.getItem('sa_activeSubsystem')
-      if (savedSubId) {
-        const sub = subs.find((s) => s.id === savedSubId)
-        if (sub) {
-          setActiveSubsystem(sub)
-          // Load subsystem items
-          const subData = draftSubsystems[sub.id] || sub
-          if (subData && savedStack) {
-            const parentSet = new Set(savedStack)
-            ;(subData.additions || []).forEach((id) => parentSet.add(id))
-            const items = Array.from(parentSet)
-            setSelectedItems(items)
-            setLastSavedItems([...items])
-          }
-        }
-      }
-    }).catch(() => setSubsystems([]))
-  }, [token, activeProject?.id])
-
-  const isAdmin = user?.groups?.includes('admins') || false
-
-  const canEditProject = useCallback((projectId) => {
-    if (isAdmin) return true
-    // Editors are checked server-side; optimistically allow if user has a project loaded
-    // The server will reject if unauthorized
-    return !!token
-  }, [isAdmin, token])
-
-  const handleSignIn = async (email, password) => {
-    const session = await signIn(email, password)
-    const parsed = parseIdToken(session)
-    setUser(parsed)
-    setToken(session.getIdToken().getJwtToken())
-  }
-
-  const handleSignOut = () => {
-    signOut()
-    setUser(null)
-    setToken(null)
-    setProjects([])
-    setActiveProject(null)
-    setSubsystems([])
-    setActiveSubsystem(null)
-    setSavedStack(null)
-    setSavedProviders([])
-    setSelectedProviders([])
-    setLastSavedItems(null)
-    setLastSavedProviders([])
-    setHasDraft(false)
-    setDraftStatus('idle')
-    setDraftSubsystems({})
-    localStorage.removeItem('sa_activeProject')
-    localStorage.removeItem('sa_activeSubsystem')
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-  }
-
-  const handleSelectProject = (projectId) => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    if (!projectId) {
-      setActiveProject(null)
-      setActiveSubsystem(null)
-      setSavedStack(null)
-      setSavedProviders([])
-      setSelectedProviders([])
-      setLastSavedItems(null)
-      setLastSavedProviders([])
-      setHasDraft(false)
-      setDraftStatus('idle')
-      setDraftSubsystems({})
-      localStorage.removeItem('sa_activeProject')
-      localStorage.removeItem('sa_activeSubsystem')
-      return
-    }
-    const project = projects.find((p) => p.id === projectId)
-    setActiveProject(project || null)
-    setActiveSubsystem(null)
-    setSavedStack(null)
-    setSavedProviders([])
-    setHasDraft(false)
-    setDraftStatus('idle')
-    setDraftSubsystems({})
-    localStorage.setItem('sa_activeProject', projectId)
-    localStorage.removeItem('sa_activeSubsystem')
-    if (project) handleLoadProject(projectId)
-  }
-
-  const handleLoadProject = async (projectIdOverride) => {
-    const pid = projectIdOverride || activeProject?.id
-    if (!token || !pid) return
-    skipAutoSave.current = true
-    try {
-      // Load committed state
-      const stack = await api.getStack(token, pid)
-      const committedItems = stack?.items || []
-      setSavedStack(committedItems)
-      setSavedProviders(stack?.providers || [])
-
-      // Load subsystems for draft tracking
-      const subs = await api.listSubsystems(token, pid)
-      setSubsystems(subs)
-      const subState = {}
-      for (const s of subs) {
-        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
-      }
-
-      // Check for existing draft
-      try {
-        const draft = await api.getDraft(token, pid)
-        if (draft) {
-          const draftItems = draft.stack?.items || committedItems
-          const draftProviders = draft.stack?.providers || stack?.providers || []
-          setSelectedItems(draftItems)
-          setSelectedProviders(draftProviders)
-          setLastSavedItems(draftItems)
-          setLastSavedProviders(draftProviders)
-          setDraftSubsystems(draft.subsystems || subState)
-          setHasDraft(true)
-          setDraftStatus('saved')
-          skipAutoSave.current = false
-          return
-        }
-      } catch (err) {
-        if (err.message?.includes('423') || err.message?.includes('locked')) {
-          console.warn('Project locked by another user')
-        }
-      }
-
-      // No draft — load committed state
-      const committedProviders = stack?.providers || []
-      setSelectedItems(committedItems)
-      setSelectedProviders(committedProviders)
-      setLastSavedItems(committedItems)
-      setLastSavedProviders(committedProviders)
-      setDraftSubsystems(subState)
-      setHasDraft(false)
-      setDraftStatus('idle')
-    } catch (err) {
-      console.error('Failed to load stack:', err)
-    } finally {
-      skipAutoSave.current = false
-    }
-  }
-
-  const performAutoSave = useCallback(async () => {
-    if (!token || !activeProject || skipAutoSave.current) return
-    setDraftStatus('saving')
-    try {
-      // Build current subsystem state
-      const currentSubState = { ...draftSubsystems }
-      if (activeSubsystem) {
-        const parentItems = savedStack || []
-        const parentSet = new Set(parentItems)
-        const currentSet = new Set(selectedItems)
-        currentSubState[activeSubsystem.id] = {
-          name: activeSubsystem.name,
-          additions: selectedItems.filter((id) => !parentSet.has(id)),
-          exclusions: parentItems.filter((id) => !currentSet.has(id))
-        }
-      }
-      await api.saveDraft(token, activeProject.id, {
-        stack: { items: activeSubsystem ? (savedStack || []) : selectedItems, providers: selectedProviders },
-        subsystems: currentSubState
-      })
-      setHasDraft(true)
-      setDraftStatus('saved')
-      setDraftSubsystems(currentSubState)
-      setLastSavedItems([...selectedItems])
-      setLastSavedProviders([...selectedProviders])
-    } catch (err) {
-      console.error('Auto-save failed:', err)
-      setDraftStatus('idle')
-    }
-  }, [token, activeProject, activeSubsystem, selectedItems, selectedProviders, savedStack, draftSubsystems])
-  performAutoSaveRef.current = performAutoSave
-
-  const handleCommit = async (message) => {
-    if (!token || !activeProject) return
-    // Trigger a final save before committing
-    await performAutoSave()
-    const commit = await api.commitChanges(token, activeProject.id, { message })
-    // Reload committed state
-    setHasDraft(false)
-    setDraftStatus('idle')
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    skipAutoSave.current = true
-    try {
-      const stack = await api.getStack(token, activeProject.id)
-      const committedItems = stack?.items || []
-      const committedProviders = stack?.providers || []
-      setSavedStack(committedItems)
-      setSavedProviders(committedProviders)
-      setSelectedItems(committedItems)
-      setSelectedProviders(committedProviders)
-      setLastSavedItems(committedItems)
-      setLastSavedProviders(committedProviders)
-      const subs = await api.listSubsystems(token, activeProject.id)
-      setSubsystems(subs)
-      const subState = {}
-      for (const s of subs) {
-        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
-      }
-      setDraftSubsystems(subState)
-      setActiveSubsystem(null)
-    } finally {
-      skipAutoSave.current = false
-    }
-    setCommitVersion((v) => v + 1)
-    return commit
-  }
-
-  const handleDiscard = async () => {
-    if (!token || !activeProject || !confirm('Discard all uncommitted changes?')) return
-    await api.discardDraft(token, activeProject.id)
-    setHasDraft(false)
-    setDraftStatus('idle')
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    // Reload committed state
-    skipAutoSave.current = true
-    try {
-      const stack = await api.getStack(token, activeProject.id)
-      const committedItems = stack?.items || []
-      setSavedStack(committedItems)
-      const discardedProviders = stack?.providers || []
-      setSavedProviders(discardedProviders)
-      setSelectedProviders(discardedProviders)
-      setLastSavedProviders(discardedProviders)
-      const subs = await api.listSubsystems(token, activeProject.id)
-      setSubsystems(subs)
-      const subState = {}
-      for (const s of subs) {
-        subState[s.id] = { name: s.name, additions: s.additions || [], exclusions: s.exclusions || [] }
-      }
-      setDraftSubsystems(subState)
-      // Restore correct items for active subsystem or base
-      if (activeSubsystem) {
-        const subData = subState[activeSubsystem.id] || subs.find((s) => s.id === activeSubsystem.id)
-        if (subData) {
-          const parentSet = new Set(committedItems)
-          ;(subData.additions || []).forEach((id) => parentSet.add(id))
-          const restoredItems = Array.from(parentSet)
-          setSelectedItems(restoredItems)
-          setLastSavedItems(restoredItems)
-        } else {
-          setActiveSubsystem(null)
-          setSelectedItems(committedItems)
-          setLastSavedItems(committedItems)
-        }
-      } else {
-        setSelectedItems(committedItems)
-        setLastSavedItems(committedItems)
-      }
-    } finally {
-      skipAutoSave.current = false
-    }
-  }
-
-  const dirty = useMemo(() => {
-    if (!activeProject || !lastSavedItems) return false
-    if (selectedItems.length !== lastSavedItems.length) return true
-    const saved = new Set(lastSavedItems)
-    if (selectedItems.some((id) => !saved.has(id))) return true
-    if (selectedProviders.length !== lastSavedProviders.length) return true
-    const sp = new Set(lastSavedProviders)
-    if (selectedProviders.some((p) => !sp.has(p))) return true
-    return false
-  }, [selectedItems, lastSavedItems, activeProject, selectedProviders, lastSavedProviders])
-
-  const pendingChanges = useMemo(() => {
-    if (!activeProject || !savedStack) return null
-    // Compute committed items for the current context (base or subsystem)
-    let committedItems = savedStack
-    if (activeSubsystem) {
-      const committedSub = subsystems.find((s) => s.id === activeSubsystem.id)
-      if (committedSub) {
-        const parentSet = new Set(savedStack)
-        ;(committedSub.exclusions || []).forEach((id) => parentSet.delete(id))
-        ;(committedSub.additions || []).forEach((id) => parentSet.add(id))
-        committedItems = Array.from(parentSet)
-      }
-    }
-    const savedSet = new Set(committedItems)
-    const currentSet = new Set(selectedItems)
-    const itemsAdded = selectedItems.filter((id) => !savedSet.has(id))
-    const itemsRemoved = committedItems.filter((id) => !currentSet.has(id))
-    const savedProvSet = new Set(savedProviders)
-    const currProvSet = new Set(selectedProviders)
-    const providersAdded = selectedProviders.filter((p) => !savedProvSet.has(p))
-    const providersRemoved = savedProviders.filter((p) => !currProvSet.has(p))
-    return { itemsAdded, itemsRemoved, providersAdded, providersRemoved }
-  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders, activeSubsystem, subsystems])
-
-  // Debounced auto-save (2s after last change, only when dirty)
-  useEffect(() => {
-    if (!token || !activeProject || !lastSavedItems || skipAutoSave.current || !dirty) return
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => {
-      performAutoSaveRef.current()
-    }, 2000)
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    }
-  }, [selectedItems, selectedProviders, activeProject?.id, token, dirty])
-
-  const handleSelectSubsystem = async (subId) => {
-    if (!subId) {
-      setActiveSubsystem(null)
-      localStorage.removeItem('sa_activeSubsystem')
-      // When switching back to base, restore base items
-      if (savedStack) {
-        setSelectedItems([...savedStack])
-        setLastSavedItems([...savedStack])
-      }
-      return
-    }
-    const sub = subsystems.find((s) => s.id === subId)
-    setActiveSubsystem(sub || null)
-    localStorage.setItem('sa_activeSubsystem', subId)
-    // Load subsystem state from draft if available, otherwise from committed
-    const subData = draftSubsystems[subId] || sub
-    if (subData && savedStack) {
-      const parentSet = new Set(savedStack)
-      ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
-      ;(subData.additions || []).forEach((id) => parentSet.add(id))
-      const items = Array.from(parentSet)
-      setSelectedItems(items)
-      setLastSavedItems([...items])
-    }
-  }
-
-  const handleCreateProject = async (name, description) => {
-    if (!token) return
-    const project = await api.createProject(token, { name, description })
-    setProjects((prev) => [...prev, project])
-    setActiveProject(project)
-    handleLoadProject(project.id)
-  }
-
-  const handleDeleteProject = async (projectId) => {
-    if (!token || !confirm('Delete this project and all its subsystems?')) return
-    await api.deleteProject(token, projectId)
-    setProjects((prev) => prev.filter((p) => p.id !== projectId))
-    if (activeProject?.id === projectId) {
-      setActiveProject(null)
-      setActiveSubsystem(null)
-      setSavedStack(null)
-      setSavedProviders([])
-      setSelectedProviders([])
-      setLastSavedItems(null)
-      setLastSavedProviders([])
-      setHasDraft(false)
-      setDraftStatus('idle')
-      setDraftSubsystems({})
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    }
-  }
-
-  const handleCreateSubsystem = async (name, description) => {
-    if (!token || !activeProject) return
-    const sub = await api.createSubsystem(token, activeProject.id, { name, description })
-    setSubsystems((prev) => [...prev, sub])
-    setActiveSubsystem(sub)
-  }
-
-  const handleDeleteSubsystem = async (subId) => {
-    if (!token || !activeProject || !confirm('Delete this subsystem?')) return
-    await api.deleteSubsystemApi(token, activeProject.id, subId)
-    setSubsystems((prev) => prev.filter((s) => s.id !== subId))
-    if (activeSubsystem?.id === subId) {
-      setActiveSubsystem(null)
-      if (savedStack) setSelectedItems([...savedStack])
-    }
-  }
-
-  const toggleCategoryCollapse = (categoryId) => {
-    setCollapsedCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(categoryId)) {
-        next.delete(categoryId)
-      } else {
-        next.add(categoryId)
-      }
-      return next
-    })
-  }
-
+  // Derived display state
   const selectedSet = useMemo(
     () => new Set(selectedItems),
     [selectedItems]
@@ -665,28 +220,6 @@ function App() {
     [exportData, exportFormat]
   )
 
-  const toggleItem = (id) => {
-    setSelectedItems((prev) => toggleInList(prev, id))
-  }
-
-  const addItems = (ids) => {
-    setSelectedItems((prev) => Array.from(new Set([...prev, ...ids])))
-  }
-
-  const removeItem = (id) => {
-    setSelectedItems((prev) => prev.filter((item) => item !== id))
-  }
-
-  const clearSelection = () => setSelectedItems([])
-
-  const resetFilters = () => {
-    setQuery('')
-    setSelectedCategories([])
-    setSelectedProviders([])
-    setSelectedTypes([])
-    setSelectedTags([])
-  }
-
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(exportText)
@@ -703,15 +236,7 @@ function App() {
           <img src="/stack-atlas.png" alt="Stack Atlas" className="brand-logo" />
           <span className="brand-name">Stack Atlas</span>
         </div>
-        {!authLoading && (
-          <AuthBar
-            user={user}
-            onSignIn={handleSignIn}
-            onSignOut={handleSignOut}
-            isAdmin={isAdmin}
-            onAdminClick={() => setShowAdmin(true)}
-          />
-        )}
+        {!authLoading && <AuthBar />}
       </div>
 
       <header className="hero">
@@ -775,19 +300,10 @@ function App() {
 
       <main className="main-grid">
         <aside className="filters-panel">
-          {user && (
-            <ProjectSelector
-              projects={projects}
-              activeProject={activeProject}
-              activeSubsystem={activeSubsystem}
-              subsystems={subsystems}
-              onSelectProject={handleSelectProject}
-              onSelectSubsystem={handleSelectSubsystem}
-            />
-          )}
+          {user && <ProjectSelector />}
           <div className="panel-header">
             <h3>Filters</h3>
-            <button type="button" className="ghost" onClick={resetFilters}>
+            <button type="button" className="ghost" onClick={() => { resetFilters(); setSelectedProviders([]) }}>
               Clear
             </button>
           </div>
@@ -823,11 +339,7 @@ function App() {
                     className="chip"
                     data-active={selectedCategories.includes(category.id) || undefined}
                     data-category={category.id}
-                    onClick={() =>
-                      setSelectedCategories((prev) =>
-                        toggleInList(prev, category.id)
-                      )
-                    }
+                    onClick={() => toggleCategory(category.id)}
                   >
                     {category.name}
                     <span className="chip-count">{categoryCounts[category.id]}</span>
@@ -891,9 +403,7 @@ function App() {
                     type="button"
                     className="chip"
                     data-active={selectedTypes.includes(type) || undefined}
-                    onClick={() =>
-                      setSelectedTypes((prev) => toggleInList(prev, type))
-                    }
+                    onClick={() => toggleType(type)}
                   >
                     {type}
                   </button>
@@ -922,9 +432,7 @@ function App() {
                     type="button"
                     className="chip"
                     data-active={selectedTags.includes(tag) || undefined}
-                    onClick={() =>
-                      setSelectedTags((prev) => toggleInList(prev, tag))
-                    }
+                    onClick={() => toggleTag(tag)}
                   >
                     {tag}
                     <span className="chip-count">{tagCounts[tag]}</span>
@@ -1118,17 +626,7 @@ function App() {
             </div>
           )}
 
-          {activeProject && canEditProject(activeProject.id) && (
-            <CommitPane
-              dirty={dirty}
-              hasDraft={hasDraft}
-              draftStatus={draftStatus}
-              pendingChanges={pendingChanges}
-              itemsById={itemsById}
-              onCommit={handleCommit}
-              onDiscard={handleDiscard}
-            />
-          )}
+          {activeProject && token && <CommitPane />}
 
           <div className="export-panel">
             <div className="export-header">
@@ -1163,45 +661,18 @@ function App() {
             )}
           </div>
 
-          {activeProject && (
-            <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} activeSubsystem={activeSubsystem} />
-          )}
+          {activeProject && <CommitLog />}
         </aside>
       </main>
 
-      {showAdmin && token && (
-        <AdminPanel
-          token={token}
-          projects={projects}
-          onClose={() => setShowAdmin(false)}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onCreateSubsystem={handleCreateSubsystem}
-          onDeleteSubsystem={handleDeleteSubsystem}
-          activeProject={activeProject}
-          subsystems={subsystems}
-          itemsById={itemsById}
-          catalogCategories={catalogCategories}
-          catalogTypes={catalogTypes}
-          catalogRawItems={catalogRawItems}
-          catalogDescriptions={catalogDescriptions}
-          catalogSource={catalogSource}
-          onCatalogPublished={(catalog) => {
-            setCatalogCategories(catalog.categories)
-            setCatalogTypes(catalog.types)
-            setCatalogRawItems(catalog.items)
-            setCatalogDescriptions(catalog.descriptions)
-            setCatalogSource('api')
-          }}
-        />
-      )}
+      {showAdmin && token && <AdminPanel />}
 
       {sessionExpired && (
-        <div className="session-expired-overlay" onClick={() => { setSessionExpired(false); handleSignOut() }}>
+        <div className="session-expired-overlay" onClick={() => { setSessionExpired(false); storeSignOut() }}>
           <div className="session-expired-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Session Expired</h3>
             <p>Your session has expired. Please sign in again to continue.</p>
-            <button type="button" className="primary" onClick={() => { setSessionExpired(false); handleSignOut() }}>
+            <button type="button" className="primary" onClick={() => { setSessionExpired(false); storeSignOut() }}>
               Sign in again
             </button>
           </div>
@@ -1209,7 +680,7 @@ function App() {
       )}
 
       <footer className="app-footer">
-        <span>Copyright © {new Date().getFullYear()}</span>
+        <span>Copyright &copy; {new Date().getFullYear()}</span>
         <a href="https://www.excella.com" target="_blank" rel="noreferrer">
           <img src="https://www.excella.com/wp-content/themes/excllcwpt/images/logo.svg" alt="Excella" height="14" />
         </a>

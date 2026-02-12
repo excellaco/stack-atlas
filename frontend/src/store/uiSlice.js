@@ -1,0 +1,56 @@
+import { toggleInList } from '../utils/search'
+
+export const createUiSlice = (set) => ({
+  // Filter state
+  query: '',
+  selectedCategories: [],
+  selectedTypes: [],
+  selectedTags: [],
+  isCategoriesOpen: false,
+  isProvidersOpen: true,
+  isTypesOpen: true,
+  isTagsOpen: false,
+
+  // View state
+  viewMode: 'hierarchy',
+  density: 'compact',
+  collapsedCategories: new Set(),
+
+  // Export state
+  exportFormat: 'markdown',
+  isExportOpen: false,
+
+  // Admin panel
+  showAdmin: false,
+
+  // Session expired overlay
+  sessionExpired: false,
+
+  // Actions
+  setQuery: (query) => set({ query }),
+  toggleCategory: (id) => set((s) => ({ selectedCategories: toggleInList(s.selectedCategories, id) })),
+  toggleType: (type) => set((s) => ({ selectedTypes: toggleInList(s.selectedTypes, type) })),
+  toggleTag: (tag) => set((s) => ({ selectedTags: toggleInList(s.selectedTags, tag) })),
+  setIsCategoriesOpen: (v) => set({ isCategoriesOpen: typeof v === 'function' ? v(false) : v }),
+  setIsProvidersOpen: (v) => set((s) => ({ isProvidersOpen: typeof v === 'function' ? v(s.isProvidersOpen) : v })),
+  setIsTypesOpen: (v) => set((s) => ({ isTypesOpen: typeof v === 'function' ? v(s.isTypesOpen) : v })),
+  setIsTagsOpen: (v) => set((s) => ({ isTagsOpen: typeof v === 'function' ? v(s.isTagsOpen) : v })),
+  setViewMode: (viewMode) => set({ viewMode }),
+  setDensity: (density) => set({ density }),
+  toggleCategoryCollapse: (categoryId) => set((s) => {
+    const next = new Set(s.collapsedCategories)
+    if (next.has(categoryId)) next.delete(categoryId)
+    else next.add(categoryId)
+    return { collapsedCategories: next }
+  }),
+  setExportFormat: (exportFormat) => set({ exportFormat }),
+  setIsExportOpen: (v) => set((s) => ({ isExportOpen: typeof v === 'function' ? v(s.isExportOpen) : v })),
+  setShowAdmin: (showAdmin) => set({ showAdmin }),
+  setSessionExpired: (sessionExpired) => set({ sessionExpired }),
+  resetFilters: () => set({
+    query: '',
+    selectedCategories: [],
+    selectedTypes: [],
+    selectedTags: [],
+  }),
+})

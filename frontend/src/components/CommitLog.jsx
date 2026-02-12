@@ -1,9 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useStore } from '../store'
+import { selectCatalogItems, selectItemsById } from '../store/selectors'
 import * as api from '../api'
 import { computeDiff, resolveItemName, formatTimeAgo } from '../utils/diff'
 import './CommitLog.css'
 
-export default function CommitLog({ token, projectId, itemsById, commitVersion, activeSubsystem }) {
+export default function CommitLog() {
+  const token = useStore((s) => s.token)
+  const activeProject = useStore((s) => s.activeProject)
+  const commitVersion = useStore((s) => s.commitVersion)
+  const activeSubsystem = useStore((s) => s.activeSubsystem)
+  const catalogRawItems = useStore((s) => s.catalogRawItems)
+  const catalogDescriptions = useStore((s) => s.catalogDescriptions)
+
+  const catalogItems = useMemo(
+    () => selectCatalogItems({ catalogRawItems, catalogDescriptions }),
+    [catalogRawItems, catalogDescriptions]
+  )
+  const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems])
+
+  const projectId = activeProject?.id
+
   const [commits, setCommits] = useState([])
   const [expanded, setExpanded] = useState(new Set())
   const [isOpen, setIsOpen] = useState(false)
@@ -33,7 +50,6 @@ export default function CommitLog({ token, projectId, itemsById, commitVersion, 
 
   const subId = activeSubsystem?.id
 
-  // Check if a commit has relevant changes for the current context
   const hasRelevantChanges = (diff) => {
     if (!diff) return false
     if (subId) {
@@ -46,7 +62,6 @@ export default function CommitLog({ token, projectId, itemsById, commitVersion, 
       diff.subsystemsAdded.length || diff.subsystemsRemoved.length
   }
 
-  // Pre-filter commits to only those with relevant changes for the current context
   const relevantCommits = useMemo(() => {
     return commits.filter((commit, index) => {
       const prevSnapshot = index < commits.length - 1 ? commits[index + 1]?.snapshot : null

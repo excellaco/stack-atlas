@@ -1,15 +1,20 @@
+import { useStore } from '../store'
 import './ProjectSelector.css'
 
-export default function ProjectSelector({
-  projects, activeProject, activeSubsystem, subsystems,
-  onSelectProject, onSelectSubsystem
-}) {
+export default function ProjectSelector() {
+  const projects = useStore((s) => s.projects)
+  const activeProject = useStore((s) => s.activeProject)
+  const activeSubsystem = useStore((s) => s.activeSubsystem)
+  const subsystems = useStore((s) => s.subsystems)
+  const selectProject = useStore((s) => s.selectProject)
+  const selectSubsystem = useStore((s) => s.selectSubsystem)
+
   return (
     <div className="project-selector-block">
       <label className="project-label">Project</label>
       <select
         value={activeProject?.id || ''}
-        onChange={(e) => onSelectProject(e.target.value || null)}
+        onChange={(e) => selectProject(e.target.value || null)}
       >
         <option value="">Local (no project)</option>
         {projects.map((p) => (
@@ -21,7 +26,7 @@ export default function ProjectSelector({
           <label className="project-label">Subsystem</label>
           <select
             value={activeSubsystem?.id || ''}
-            onChange={(e) => onSelectSubsystem(e.target.value || null)}
+            onChange={(e) => selectSubsystem(e.target.value || null)}
           >
             <option value="">Base project</option>
             {subsystems.map((s) => (

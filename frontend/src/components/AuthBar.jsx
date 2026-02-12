@@ -1,7 +1,15 @@
 import { useState } from 'react'
+import { useStore } from '../store'
+import { selectIsAdmin } from '../store/selectors'
 import './AuthBar.css'
 
-export default function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminClick }) {
+export default function AuthBar() {
+  const user = useStore((s) => s.user)
+  const signIn = useStore((s) => s.signIn)
+  const signOut = useStore((s) => s.signOut)
+  const isAdmin = useStore((s) => selectIsAdmin(s))
+  const setShowAdmin = useStore((s) => s.setShowAdmin)
+
   const [showForm, setShowForm] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,7 +21,7 @@ export default function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminCli
     setError('')
     setLoading(true)
     try {
-      await onSignIn(email, password)
+      await signIn(email, password)
       setShowForm(false)
       setEmail('')
       setPassword('')
@@ -29,11 +37,11 @@ export default function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminCli
       <div className="auth-bar">
         <span className="auth-user">{user.email}</span>
         {isAdmin && (
-          <button type="button" className="ghost" onClick={onAdminClick}>
+          <button type="button" className="ghost" onClick={() => setShowAdmin(true)}>
             Admin
           </button>
         )}
-        <button type="button" className="ghost" onClick={onSignOut}>
+        <button type="button" className="ghost" onClick={signOut}>
           Sign out
         </button>
       </div>

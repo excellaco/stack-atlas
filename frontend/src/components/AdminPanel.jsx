@@ -5,6 +5,8 @@ import {
   rawItems as staticRawItems,
   descriptionById as staticDescriptions
 } from '../data/stackData'
+import { useStore } from '../store'
+import { selectCatalogItems, selectItemsById } from '../store/selectors'
 import * as api from '../api'
 import { computeDiff, resolveItemName, formatTimeAgo } from '../utils/diff'
 import UserPicker from './UserPicker'
@@ -12,7 +14,28 @@ import CatalogItemForm from './CatalogItemForm'
 import CategoryStyles from './CategoryStyles'
 import './AdminPanel.css'
 
-export default function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject, onCreateSubsystem, onDeleteSubsystem, activeProject, subsystems, itemsById, catalogCategories, catalogTypes, catalogRawItems, catalogDescriptions, catalogSource, onCatalogPublished }) {
+export default function AdminPanel() {
+  const token = useStore((s) => s.token)
+  const projects = useStore((s) => s.projects)
+  const activeProject = useStore((s) => s.activeProject)
+  const subsystems = useStore((s) => s.subsystems)
+  const catalogCategories = useStore((s) => s.catalogCategories)
+  const catalogTypes = useStore((s) => s.catalogTypes)
+  const catalogRawItems = useStore((s) => s.catalogRawItems)
+  const catalogDescriptions = useStore((s) => s.catalogDescriptions)
+  const catalogSource = useStore((s) => s.catalogSource)
+  const setCatalogFromPublish = useStore((s) => s.setCatalogFromPublish)
+  const setShowAdmin = useStore((s) => s.setShowAdmin)
+  const storeCreateProject = useStore((s) => s.createProject)
+  const storeDeleteProject = useStore((s) => s.deleteProject)
+  const storeCreateSubsystem = useStore((s) => s.createSubsystem)
+  const storeDeleteSubsystem = useStore((s) => s.deleteSubsystem)
+  const catalogItems = useMemo(
+    () => selectCatalogItems({ catalogRawItems, catalogDescriptions }),
+    [catalogRawItems, catalogDescriptions]
+  )
+  const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems])
+  const onClose = () => setShowAdmin(false)
   const [tab, setTab] = useState('roles')
   const [roles, setRoles] = useState(null)
   const [users, setUsers] = useState(null)
@@ -132,7 +155,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
   const handleCreateProject = async (e) => {
     e.preventDefault()
     if (!newProjName.trim()) return
-    await onCreateProject(newProjName.trim(), newProjDesc.trim())
+    await storeCreateProject(newProjName.trim(), newProjDesc.trim())
     setNewProjName('')
     setNewProjDesc('')
     setShowCreate(false)
@@ -141,7 +164,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
   const handleCreateSub = async (e) => {
     e.preventDefault()
     if (!newSubName.trim()) return
-    await onCreateSubsystem(newSubName.trim(), newSubDesc.trim())
+    await storeCreateSubsystem(newSubName.trim(), newSubDesc.trim())
     setNewSubName('')
     setNewSubDesc('')
     setShowCreateSub(false)
@@ -175,7 +198,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
     try {
       const catalog = { categories: editCategories, types: editTypes, descriptions: editDescriptions, items: editItems }
       await api.putCatalog(token, catalog)
-      onCatalogPublished(catalog)
+      setCatalogFromPublish(catalog)
       setCatalogDirty(false)
     } catch (e) {
       setError(e.message)
@@ -446,7 +469,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
                     </div>
                     <span className="admin-table-meta">{editorCount} editor{editorCount !== 1 ? 's' : ''}</span>
                     <button type="button" className="ghost danger" onClick={() => {
-                      if (confirm(`Delete project "${p.name}" and all its data?`)) onDeleteProject(p.id)
+                      if (confirm(`Delete project "${p.name}" and all its data?`)) storeDeleteProject(p.id)
                     }}>Delete</button>
                   </div>
                 )
@@ -475,7 +498,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
                           {s.description && <span className="admin-table-desc">{s.description}</span>}
                         </div>
                         <button type="button" className="ghost danger" onClick={() => {
-                          if (confirm(`Delete subsystem "${s.name}"?`)) onDeleteSubsystem(s.id)
+                          if (confirm(`Delete subsystem "${s.name}"?`)) storeDeleteSubsystem(s.id)
                         }}>Delete</button>
                       </div>
                     ))}

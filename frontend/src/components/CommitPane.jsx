@@ -1,7 +1,35 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useStore } from '../store'
+import { selectDirty, selectPendingChanges, selectCatalogItems, selectItemsById } from '../store/selectors'
 import './CommitPane.css'
 
-export default function CommitPane({ dirty, hasDraft, draftStatus, pendingChanges, itemsById, onCommit, onDiscard }) {
+export default function CommitPane() {
+  const dirty = useStore((s) => selectDirty(s))
+  const hasDraft = useStore((s) => s.hasDraft)
+  const draftStatus = useStore((s) => s.draftStatus)
+  const commit = useStore((s) => s.commit)
+  const discard = useStore((s) => s.discard)
+
+  const catalogRawItems = useStore((s) => s.catalogRawItems)
+  const catalogDescriptions = useStore((s) => s.catalogDescriptions)
+  const catalogItems = useMemo(
+    () => selectCatalogItems({ catalogRawItems, catalogDescriptions }),
+    [catalogRawItems, catalogDescriptions]
+  )
+  const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems])
+
+  const activeProject = useStore((s) => s.activeProject)
+  const savedStack = useStore((s) => s.savedStack)
+  const activeSubsystem = useStore((s) => s.activeSubsystem)
+  const subsystems = useStore((s) => s.subsystems)
+  const selectedItems = useStore((s) => s.selectedItems)
+  const savedProviders = useStore((s) => s.savedProviders)
+  const selectedProviders = useStore((s) => s.selectedProviders)
+  const pendingChanges = useMemo(
+    () => selectPendingChanges({ activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders }),
+    [activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders]
+  )
+
   const [isOpen, setIsOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,7 +53,7 @@ export default function CommitPane({ dirty, hasDraft, draftStatus, pendingChange
     setLoading(true)
     setError('')
     try {
-      await onCommit(message.trim())
+      await commit(message.trim())
       setMessage('')
       setIsOpen(false)
     } catch (err) {
@@ -33,6 +61,11 @@ export default function CommitPane({ dirty, hasDraft, draftStatus, pendingChange
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDiscard = async () => {
+    if (!confirm('Discard all uncommitted changes?')) return
+    await discard()
   }
 
   const resolveItemName = (id) => {
@@ -101,7 +134,7 @@ export default function CommitPane({ dirty, hasDraft, draftStatus, pendingChange
                 type="button"
                 className="ghost danger"
                 disabled={!hasDraft}
-                onClick={onDiscard}
+                onClick={handleDiscard}
               >
                 Discard
               </button>
