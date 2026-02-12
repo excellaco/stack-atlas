@@ -1,20 +1,14 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
+    branches: ["**"]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: production-deploy
-  cancel-in-progress: false
-
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
-  deploy:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,15 +24,12 @@ jobs:
           npm ci --prefix backend
       - name: Initialize TFLint rules
         run: tflint --chdir infrastructure/terraform --init
-      # --- Quality gates (all must pass before deploy) ---
       - name: Lint
         run: |
           npm run format:check
           npm run lint
           npm run fmt:tf:check
           npm run lint:tf
-      # Trivy runs two scans: IaC misconfigurations in Terraform, and secret
-      # detection across the whole repo. Both fail the pipeline on HIGH/CRITICAL.
       - name: Security scan (IaC)
         uses: aquasecurity/trivy-action@0.33.1
         with:
@@ -58,7 +49,28 @@ jobs:
         run: npm run typecheck
       - name: Test
         run: npm test
-      # --- Deploy (requires AWS credentials) ---
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix frontend
+          npm ci --prefix backend
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.OIDC_ROLE }}
@@ -66,7 +78,6 @@ jobs:
           aws-region: us-east-1
       - name: Deploy
         run: bash scripts/deploy.sh
-      # --- Post-deploy verification ---
       # E2E reads credentials from Secrets Manager (populated by Terraform in e2e.tf).
       # This runs against the live deployment, not mocks.
       - name: E2E smoke test

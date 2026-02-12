@@ -1,11 +1,6 @@
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useStore } from "../store";
-import {
-  selectDirty,
-  selectPendingChanges,
-  selectCatalogItems,
-  selectItemsById,
-} from "../store/selectors";
+import { selectDirty, selectPendingChanges, selectCatalogItems, selectItemsById } from "../store/selectors";
 import type { PendingChanges, DraftStatus } from "../types";
 import "./CommitPane.css";
 
@@ -57,7 +52,7 @@ function ChangesList({
 interface CommitFormProps {
   message: string;
   setMessage: React.Dispatch<React.SetStateAction<string>>;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onDiscard: () => void;
   loading: boolean;
   error: string;
@@ -172,7 +167,34 @@ function useCommitPaneData() {
   );
   const itemsById = useMemo(() => selectItemsById(catalogItems), [catalogItems]);
 
-  const pendingChanges = useStore((s) => selectPendingChanges(s));
+  const activeProject = useStore((s) => s.activeProject);
+  const savedStack = useStore((s) => s.savedStack);
+  const activeSubsystem = useStore((s) => s.activeSubsystem);
+  const subsystems = useStore((s) => s.subsystems);
+  const selectedItems = useStore((s) => s.selectedItems);
+  const savedProviders = useStore((s) => s.savedProviders);
+  const selectedProviders = useStore((s) => s.selectedProviders);
+  const pendingChanges = useMemo(
+    () =>
+      selectPendingChanges({
+        activeProject,
+        savedStack,
+        activeSubsystem,
+        subsystems,
+        selectedItems,
+        savedProviders,
+        selectedProviders,
+      } as Parameters<typeof selectPendingChanges>[0]),
+    [
+      activeProject,
+      savedStack,
+      activeSubsystem,
+      subsystems,
+      selectedItems,
+      savedProviders,
+      selectedProviders,
+    ]
+  );
 
   const hasChanges = computeHasChanges(pendingChanges);
 
@@ -202,10 +224,10 @@ function useCommitActions(
   setError: React.Dispatch<React.SetStateAction<string>>,
   message: string
 ): {
-  handleCommit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  handleCommit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   handleDiscard: () => Promise<void>;
 } {
-  const handleCommit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleCommit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!message.trim()) return;
     setLoading(true);

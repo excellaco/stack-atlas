@@ -31,5 +31,6 @@ locals {
     ".woff2" = "font/woff2"
     ".ttf"   = "font/ttf"
     ".eot"   = "application/vnd.ms-fontobject"
+    ".map"   = "application/json"
   }
 }
