@@ -38,6 +38,7 @@ function App() {
   const [density, setDensity] = useState('compact')
   const [collapsedCategories, setCollapsedCategories] = useState(new Set())
   const [exportFormat, setExportFormat] = useState('markdown')
+  const [isExportOpen, setIsExportOpen] = useState(false)
 
   // Auth state
   const [user, setUser] = useState(null)
@@ -51,6 +52,8 @@ function App() {
   const [activeSubsystem, setActiveSubsystem] = useState(null)
   const [savedStack, setSavedStack] = useState(null)
   const [savedProviders, setSavedProviders] = useState([])
+  const [lastSavedItems, setLastSavedItems] = useState(null)
+  const [lastSavedProviders, setLastSavedProviders] = useState([])
   const [showAdmin, setShowAdmin] = useState(false)
 
   // Draft/commit state
@@ -166,7 +169,9 @@ function App() {
           if (subData && savedStack) {
             const parentSet = new Set(savedStack)
             ;(subData.additions || []).forEach((id) => parentSet.add(id))
-            setSelectedItems(Array.from(parentSet))
+            const items = Array.from(parentSet)
+            setSelectedItems(items)
+            setLastSavedItems([...items])
           }
         }
       }
@@ -200,6 +205,8 @@ function App() {
     setSavedStack(null)
     setSavedProviders([])
     setSelectedProviders([])
+    setLastSavedItems(null)
+    setLastSavedProviders([])
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
@@ -216,6 +223,8 @@ function App() {
       setSavedStack(null)
       setSavedProviders([])
       setSelectedProviders([])
+      setLastSavedItems(null)
+      setLastSavedProviders([])
       setHasDraft(false)
       setDraftStatus('idle')
       setDraftSubsystems({})
@@ -259,8 +268,12 @@ function App() {
       try {
         const draft = await api.getDraft(token, pid)
         if (draft) {
-          setSelectedItems(draft.stack?.items || committedItems)
-          setSelectedProviders(draft.stack?.providers || stack?.providers || [])
+          const draftItems = draft.stack?.items || committedItems
+          const draftProviders = draft.stack?.providers || stack?.providers || []
+          setSelectedItems(draftItems)
+          setSelectedProviders(draftProviders)
+          setLastSavedItems(draftItems)
+          setLastSavedProviders(draftProviders)
           setDraftSubsystems(draft.subsystems || subState)
           setHasDraft(true)
           setDraftStatus('saved')
@@ -274,8 +287,11 @@ function App() {
       }
 
       // No draft — load committed state
+      const committedProviders = stack?.providers || []
       setSelectedItems(committedItems)
-      setSelectedProviders(stack?.providers || [])
+      setSelectedProviders(committedProviders)
+      setLastSavedItems(committedItems)
+      setLastSavedProviders(committedProviders)
       setDraftSubsystems(subState)
       setHasDraft(false)
       setDraftStatus('idle')
@@ -309,6 +325,8 @@ function App() {
       setHasDraft(true)
       setDraftStatus('saved')
       setDraftSubsystems(currentSubState)
+      setLastSavedItems([...selectedItems])
+      setLastSavedProviders([...selectedProviders])
     } catch (err) {
       console.error('Auto-save failed:', err)
       setDraftStatus('idle')
@@ -328,10 +346,14 @@ function App() {
     skipAutoSave.current = true
     try {
       const stack = await api.getStack(token, activeProject.id)
-      setSavedStack(stack?.items || [])
-      setSavedProviders(stack?.providers || [])
-      setSelectedItems(stack?.items || [])
-      setSelectedProviders(stack?.providers || [])
+      const committedItems = stack?.items || []
+      const committedProviders = stack?.providers || []
+      setSavedStack(committedItems)
+      setSavedProviders(committedProviders)
+      setSelectedItems(committedItems)
+      setSelectedProviders(committedProviders)
+      setLastSavedItems(committedItems)
+      setLastSavedProviders(committedProviders)
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
       const subState = {}
@@ -359,8 +381,10 @@ function App() {
       const stack = await api.getStack(token, activeProject.id)
       const committedItems = stack?.items || []
       setSavedStack(committedItems)
-      setSavedProviders(stack?.providers || [])
-      setSelectedProviders(stack?.providers || [])
+      const discardedProviders = stack?.providers || []
+      setSavedProviders(discardedProviders)
+      setSelectedProviders(discardedProviders)
+      setLastSavedProviders(discardedProviders)
       const subs = await api.listSubsystems(token, activeProject.id)
       setSubsystems(subs)
       const subState = {}
@@ -374,13 +398,17 @@ function App() {
         if (subData) {
           const parentSet = new Set(committedItems)
           ;(subData.additions || []).forEach((id) => parentSet.add(id))
-          setSelectedItems(Array.from(parentSet))
+          const restoredItems = Array.from(parentSet)
+          setSelectedItems(restoredItems)
+          setLastSavedItems(restoredItems)
         } else {
           setActiveSubsystem(null)
           setSelectedItems(committedItems)
+          setLastSavedItems(committedItems)
         }
       } else {
         setSelectedItems(committedItems)
+        setLastSavedItems(committedItems)
       }
     } finally {
       skipAutoSave.current = false
@@ -388,33 +416,43 @@ function App() {
   }
 
   const dirty = useMemo(() => {
-    if (!activeProject || !savedStack) return selectedItems.length > 0 && !!activeProject
-    if (selectedItems.length !== savedStack.length) return true
-    const saved = new Set(savedStack)
+    if (!activeProject || !lastSavedItems) return false
+    if (selectedItems.length !== lastSavedItems.length) return true
+    const saved = new Set(lastSavedItems)
     if (selectedItems.some((id) => !saved.has(id))) return true
-    // Check provider changes
-    if (selectedProviders.length !== savedProviders.length) return true
-    const sp = new Set(savedProviders)
+    if (selectedProviders.length !== lastSavedProviders.length) return true
+    const sp = new Set(lastSavedProviders)
     if (selectedProviders.some((p) => !sp.has(p))) return true
     return false
-  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders])
+  }, [selectedItems, lastSavedItems, activeProject, selectedProviders, lastSavedProviders])
 
   const pendingChanges = useMemo(() => {
     if (!activeProject || !savedStack) return null
-    const savedSet = new Set(savedStack)
+    // Compute committed items for the current context (base or subsystem)
+    let committedItems = savedStack
+    if (activeSubsystem) {
+      const committedSub = subsystems.find((s) => s.id === activeSubsystem.id)
+      if (committedSub) {
+        const parentSet = new Set(savedStack)
+        ;(committedSub.exclusions || []).forEach((id) => parentSet.delete(id))
+        ;(committedSub.additions || []).forEach((id) => parentSet.add(id))
+        committedItems = Array.from(parentSet)
+      }
+    }
+    const savedSet = new Set(committedItems)
     const currentSet = new Set(selectedItems)
     const itemsAdded = selectedItems.filter((id) => !savedSet.has(id))
-    const itemsRemoved = savedStack.filter((id) => !currentSet.has(id))
+    const itemsRemoved = committedItems.filter((id) => !currentSet.has(id))
     const savedProvSet = new Set(savedProviders)
     const currProvSet = new Set(selectedProviders)
     const providersAdded = selectedProviders.filter((p) => !savedProvSet.has(p))
     const providersRemoved = savedProviders.filter((p) => !currProvSet.has(p))
     return { itemsAdded, itemsRemoved, providersAdded, providersRemoved }
-  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders])
+  }, [selectedItems, savedStack, activeProject, selectedProviders, savedProviders, activeSubsystem, subsystems])
 
   // Debounced auto-save (2s after last change, only when dirty)
   useEffect(() => {
-    if (!token || !activeProject || !savedStack || skipAutoSave.current || !dirty) return
+    if (!token || !activeProject || !lastSavedItems || skipAutoSave.current || !dirty) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
       performAutoSaveRef.current()
@@ -422,17 +460,16 @@ function App() {
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     }
-  }, [selectedItems, selectedProviders, activeProject?.id, token, savedStack, dirty])
+  }, [selectedItems, selectedProviders, activeProject?.id, token, dirty])
 
   const handleSelectSubsystem = async (subId) => {
     if (!subId) {
       setActiveSubsystem(null)
       localStorage.removeItem('sa_activeSubsystem')
-      // When switching back to base, use draft stack if available
-      if (hasDraft) {
-        if (savedStack) setSelectedItems([...savedStack])
-      } else if (savedStack) {
+      // When switching back to base, restore base items
+      if (savedStack) {
         setSelectedItems([...savedStack])
+        setLastSavedItems([...savedStack])
       }
       return
     }
@@ -445,7 +482,9 @@ function App() {
       const parentSet = new Set(savedStack)
       ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
       ;(subData.additions || []).forEach((id) => parentSet.add(id))
-      setSelectedItems(Array.from(parentSet))
+      const items = Array.from(parentSet)
+      setSelectedItems(items)
+      setLastSavedItems([...items])
     }
   }
 
@@ -467,6 +506,8 @@ function App() {
       setSavedStack(null)
       setSavedProviders([])
       setSelectedProviders([])
+      setLastSavedItems(null)
+      setLastSavedProviders([])
       setHasDraft(false)
       setDraftStatus('idle')
       setDraftSubsystems({})
@@ -1003,31 +1044,28 @@ function App() {
         </section>
 
         <aside className="selected-panel">
+          {activeProject && (
+            <div className="project-context">
+              <strong>{activeProject.name}</strong>
+              {activeSubsystem && <span> / {activeSubsystem.name}</span>}
+              {hasDraft && <span className="draft-badge">Draft</span>}
+              <a
+                className="ghost project-view-link"
+                href={`/view/${activeProject.id}${activeSubsystem ? `/${activeSubsystem.id}` : ''}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View
+              </a>
+            </div>
+          )}
+
           <div className="panel-header">
-            <h3>Selected Stack</h3>
+            <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}</h3>
             <button type="button" className="ghost" onClick={clearSelection}>
               Clear all
             </button>
           </div>
-
-          {activeProject && (
-            <>
-              <div className="project-context">
-                <strong>{activeProject.name}</strong>
-                {activeSubsystem && <span> / {activeSubsystem.name}</span>}
-                {hasDraft && <span className="draft-badge">Draft</span>}
-                <a
-                  className="ghost project-view-link"
-                  href={`/view/${activeProject.id}${activeSubsystem ? `/${activeSubsystem.id}` : ''}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View
-                </a>
-              </div>
-              <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} />
-            </>
-          )}
 
           {selectedItems.length ? (
             <div className="selected-groups">
@@ -1064,9 +1102,24 @@ function App() {
             </div>
           )}
 
+          {activeProject && canEditProject(activeProject.id) && (
+            <CommitPane
+              dirty={dirty}
+              hasDraft={hasDraft}
+              draftStatus={draftStatus}
+              pendingChanges={pendingChanges}
+              itemsById={itemsById}
+              onCommit={handleCommit}
+              onDiscard={handleDiscard}
+            />
+          )}
+
           <div className="export-panel">
             <div className="export-header">
-              <h4>Standard Output</h4>
+              <div className="export-trigger" onClick={() => setIsExportOpen((prev) => !prev)}>
+                <h4>Export</h4>
+                <span className="export-toggle">{isExportOpen ? '−' : '+'}</span>
+              </div>
               <div className="export-actions">
                 <button
                   type="button"
@@ -1089,19 +1142,13 @@ function App() {
                 </button>
               </div>
             </div>
-            <pre className="export-body">{exportText}</pre>
+            {isExportOpen && (
+              <pre className="export-body">{exportText}</pre>
+            )}
           </div>
 
-          {activeProject && canEditProject(activeProject.id) && (
-            <CommitPane
-              dirty={dirty}
-              hasDraft={hasDraft}
-              draftStatus={draftStatus}
-              pendingChanges={pendingChanges}
-              itemsById={itemsById}
-              onCommit={handleCommit}
-              onDiscard={handleDiscard}
-            />
+          {activeProject && (
+            <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} />
           )}
         </aside>
       </main>
