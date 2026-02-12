@@ -48,7 +48,18 @@ function CommitEntry({
 }: Readonly<CommitEntryProps>): React.JSX.Element {
   return (
     <div className="commit-entry">
-      <div className="commit-entry-header" onClick={onToggle}>
+      <div
+        className="commit-entry-header"
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
         <span className="commit-entry-toggle">{isExpanded ? "\u25BE" : "\u25B8"}</span>
         <div className="commit-entry-body">
           <div className="commit-entry-message">{commit.message}</div>
@@ -125,8 +136,24 @@ function FullHistoryModal({
   onClose,
 }: Readonly<FullHistoryModalProps>): React.JSX.Element {
   return (
-    <div className="commit-full-overlay" onClick={onClose}>
-      <div className="commit-full-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+    <div
+      className="commit-full-overlay"
+      role="button"
+      tabIndex={0}
+      onClick={onClose}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="commit-full-modal"
+        role="presentation"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
         <div className="commit-full-header">
           <h3>Commit History ({commits.length})</h3>
           <button type="button" className="ghost" onClick={onClose}>
@@ -286,7 +313,18 @@ export default function CommitLog(): React.JSX.Element {
 
   return (
     <div className="commit-log">
-      <div className="commit-log-header" onClick={() => setIsOpen(!isOpen)}>
+      <div
+        className="commit-log-header"
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+      >
         <h4>History{relevantCommits.length > 0 ? ` (${relevantCommits.length})` : ""}</h4>
         <span className="commit-log-toggle">{isOpen ? "\u2212" : "+"}</span>
       </div>

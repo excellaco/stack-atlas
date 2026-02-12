@@ -41,7 +41,7 @@
 }
 
 .explorer-row.active {
-  background: rgba(15, 118, 110, 0.08);
+  background: rgb(15 118 110 / 8%);
 }
 
 .explorer-toggle {
@@ -75,7 +75,7 @@
 }
 
 .explorer-name:hover {
-  background: rgba(15, 23, 42, 0.04);
+  background: rgb(15 23 42 / 4%);
 }
 
 .explorer-row.active .explorer-name {
@@ -105,7 +105,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 50%;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgb(15 118 110 / 10%);
   flex-shrink: 0;
   margin-left: auto;
 }
@@ -117,7 +117,7 @@
 .explorer-children {
   padding-left: 1rem;
   margin-left: 0.6rem;
-  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 1px solid rgb(15 23 42 / 8%);
 }
 
 .explorer-sub {

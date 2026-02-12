@@ -166,8 +166,24 @@ export default function AdminPanel(): React.JSX.Element {
   }
 
   return (
-    <div className="admin-overlay" onClick={state.onClose}>
-      <div className="admin-panel" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+    <div
+      className="admin-overlay"
+      role="button"
+      tabIndex={0}
+      onClick={state.onClose}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          state.onClose();
+        }
+      }}
+    >
+      <div
+        className="admin-panel"
+        role="presentation"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
         <CategoryStyles categories={state.catalog.editCategories} />
         <AdminHeader onDownload={state.handleDownloadCatalog} onClose={state.onClose} />
         <AdminTabBar tab={state.tab} setTab={state.setTab} />

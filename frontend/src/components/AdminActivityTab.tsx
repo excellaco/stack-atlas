@@ -131,7 +131,18 @@ function CommitEntry({
 
   return (
     <div className="commit-entry">
-      <div className="commit-entry-header" onClick={() => onToggle(commit.id)}>
+      <div
+        className="commit-entry-header"
+        role="button"
+        tabIndex={0}
+        onClick={() => onToggle(commit.id)}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle(commit.id);
+          }
+        }}
+      >
         <span className="commit-entry-toggle">{isExpanded ? "\u25BE" : "\u25B8"}</span>
         <div className="commit-entry-body">
           <div className="commit-entry-message">

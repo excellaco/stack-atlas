@@ -11,8 +11,11 @@ export default function ProjectSelector(): React.JSX.Element {
 
   return (
     <div className="project-selector-block">
-      <label className="project-label">Project</label>
+      <label className="project-label" htmlFor="project-select">
+        Project
+      </label>
       <select
+        id="project-select"
         value={activeProject?.id || ""}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
           selectProject(e.target.value || null)
@@ -27,8 +30,11 @@ export default function ProjectSelector(): React.JSX.Element {
       </select>
       {activeProject && (
         <>
-          <label className="project-label">Subsystem</label>
+          <label className="project-label" htmlFor="subsystem-select">
+            Subsystem
+          </label>
           <select
+            id="subsystem-select"
             value={activeSubsystem?.id || ""}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               selectSubsystem(e.target.value || null)

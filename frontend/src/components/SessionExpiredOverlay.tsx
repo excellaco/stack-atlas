@@ -13,8 +13,24 @@ export default function SessionExpiredOverlay(): React.JSX.Element | null {
   };
 
   return (
-    <div className="session-expired-overlay" onClick={handleDismiss}>
-      <div className="session-expired-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+    <div
+      className="session-expired-overlay"
+      role="button"
+      tabIndex={0}
+      onClick={handleDismiss}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleDismiss();
+        }
+      }}
+    >
+      <div
+        className="session-expired-modal"
+        role="presentation"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
         <h3>Session Expired</h3>
         <p>Your session has expired. Please sign in again to continue.</p>
         <button type="button" className="primary" onClick={handleDismiss}>

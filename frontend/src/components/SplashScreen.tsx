@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../store";
 import "./SplashScreen.css";
@@ -12,6 +12,11 @@ function SplashSignInForm({ onSignIn }: Readonly<SplashSignInFormProps>): React.
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -34,12 +39,12 @@ function SplashSignInForm({ onSignIn }: Readonly<SplashSignInFormProps>): React.
       }}
     >
       <input
+        ref={emailRef}
         type="email"
         placeholder="Email"
         value={email}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
         required
-        autoFocus
       />
       <input
         type="password"

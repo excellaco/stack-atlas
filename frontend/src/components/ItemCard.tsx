@@ -63,7 +63,9 @@ function ItemMetaOverlay({
   return (
     <div
       className="item-meta-overlay"
+      role="presentation"
       onClick={(event: React.MouseEvent) => event.stopPropagation()}
+      onKeyDown={(event: React.KeyboardEvent) => event.stopPropagation()}
     >
       {item.description && <div className="item-description">{item.description}</div>}
       {parentName && <div className="item-parent">Parent: {parentName}</div>}
@@ -153,13 +155,21 @@ export default function ItemCard({
   const hasMetadata = hasItemMetadata(item, parentName, commonItems);
 
   return (
-    <article
+    <div
       className="item-card"
       data-selected={isSelected || undefined}
       data-inherited={(isInherited && isSelected) || undefined}
       data-depth={depth || undefined}
       data-delay={Math.min(index, 10) || undefined}
+      role="button"
+      tabIndex={0}
       onClick={() => toggleItem(item.id)}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleItem(item.id);
+        }
+      }}
     >
       <ItemMainRow
         item={item}
@@ -175,6 +185,6 @@ export default function ItemCard({
           addItems={addItems}
         />
       )}
-    </article>
+    </div>
   );
 }

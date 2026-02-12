@@ -1,5 +1,5 @@
 .commit-pane {
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid rgb(15 23 42 / 8%);
   margin-top: 0.75rem;
   padding-top: 0.5rem;
 }
@@ -32,22 +32,22 @@
 
 .commit-pane-status.saving {
   color: #d97706;
-  background: rgba(217, 119, 6, 0.08);
+  background: rgb(217 119 6 / 8%);
 }
 
 .commit-pane-status.unsaved {
   color: #b91c1c;
-  background: rgba(185, 28, 28, 0.08);
+  background: rgb(185 28 28 / 8%);
 }
 
 .commit-pane-status.saved {
   color: #0f766e;
-  background: rgba(15, 118, 110, 0.08);
+  background: rgb(15 118 110 / 8%);
 }
 
 .commit-pane-status.idle {
   color: var(--muted);
-  background: rgba(15, 23, 42, 0.04);
+  background: rgb(15 23 42 / 4%);
 }
 
 .commit-pane-toggle {
@@ -73,7 +73,7 @@
 }
 
 .commit-pane-input {
-  border: 1px solid rgba(15, 23, 42, 0.15);
+  border: 1px solid rgb(15 23 42 / 15%);
   border-radius: 6px;
   padding: 0.4rem 0.5rem;
   font-size: 0.8rem;
@@ -84,7 +84,7 @@
 .commit-pane-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
+  box-shadow: 0 0 0 2px rgb(15 118 110 / 10%);
 }
 
 .commit-pane-actions {

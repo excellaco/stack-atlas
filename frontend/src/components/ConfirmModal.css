@@ -1,7 +1,7 @@
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgb(15 23 42 / 40%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,7 +15,7 @@
   padding: 1.5rem;
   max-width: 400px;
   width: 90%;
-  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 8px 32px rgb(15 23 42 / 15%);
 }
 
 .confirm-modal h3 {
@@ -54,11 +54,11 @@
 .confirm-btn.cancel {
   background: transparent;
   color: var(--muted);
-  border-color: rgba(15, 23, 42, 0.15);
+  border-color: rgb(15 23 42 / 15%);
 }
 
 .confirm-btn.cancel:hover {
-  background: rgba(15, 23, 42, 0.04);
+  background: rgb(15 23 42 / 4%);
 }
 
 .confirm-btn.default {

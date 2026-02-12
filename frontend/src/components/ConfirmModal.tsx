@@ -17,8 +17,24 @@ export default function ConfirmModal(): React.JSX.Element | null {
   const cancelLabel = (dialog as typeof dialog & { cancelLabel?: string }).cancelLabel ?? "Cancel";
 
   return (
-    <div className="confirm-overlay" onClick={() => resolveConfirm(false)}>
-      <div className="confirm-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+    <div
+      className="confirm-overlay"
+      role="button"
+      tabIndex={0}
+      onClick={() => resolveConfirm(false)}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          resolveConfirm(false);
+        }
+      }}
+    >
+      <div
+        className="confirm-modal"
+        role="presentation"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
         <h3>{title}</h3>
         <p>{message}</p>
         <div className="confirm-actions">

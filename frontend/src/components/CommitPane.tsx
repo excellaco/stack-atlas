@@ -133,7 +133,18 @@ function CommitPaneHeader({
   statusLabel,
 }: Readonly<CommitPaneHeaderProps>): React.JSX.Element {
   return (
-    <div className="commit-pane-header" onClick={() => setIsOpen(!isOpen)}>
+    <div
+      className="commit-pane-header"
+      role="button"
+      tabIndex={0}
+      onClick={() => setIsOpen(!isOpen)}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setIsOpen(!isOpen);
+        }
+      }}
+    >
       <div className="commit-pane-title">
         <h4>Changes</h4>
         <span className={`commit-pane-status ${statusClass}`}>{statusLabel}</span>
