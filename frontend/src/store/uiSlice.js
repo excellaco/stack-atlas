@@ -1,6 +1,6 @@
 import { toggleInList } from '../utils/search'
 
-export const createUiSlice = (set) => ({
+export const createUiSlice = (set, get) => ({
   // Filter state
   query: '',
   selectedCategories: [],
@@ -26,6 +26,9 @@ export const createUiSlice = (set) => ({
   // Session expired overlay
   sessionExpired: false,
 
+  // Confirm dialog (replaces browser confirm())
+  confirmDialog: null,
+
   // Actions
   setQuery: (query) => set({ query }),
   toggleCategory: (id) => set((s) => ({ selectedCategories: toggleInList(s.selectedCategories, id) })),
@@ -47,6 +50,14 @@ export const createUiSlice = (set) => ({
   setIsExportOpen: (v) => set((s) => ({ isExportOpen: typeof v === 'function' ? v(s.isExportOpen) : v })),
   setShowAdmin: (showAdmin) => set({ showAdmin }),
   setSessionExpired: (sessionExpired) => set({ sessionExpired }),
+  requestConfirm: (config) => new Promise((resolve) => {
+    set({ confirmDialog: { ...config, resolve } })
+  }),
+  resolveConfirm: (result) => {
+    const { confirmDialog } = get()
+    if (confirmDialog?.resolve) confirmDialog.resolve(result)
+    set({ confirmDialog: null })
+  },
   resetFilters: () => set({
     query: '',
     selectedCategories: [],

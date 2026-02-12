@@ -15,6 +15,53 @@
   gap: 1rem;
 }
 
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editor-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--ink);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.view-mode-btn:hover {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+.sandbox-indicator {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.08);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -38,63 +85,6 @@
   padding: 0;
 }
 
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.hero h1 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
-  margin: 0 0 0.5rem;
-  line-height: 1.15;
-}
-
-.hero-subtitle {
-  font-size: 0.9rem;
-  color: var(--muted);
-  max-width: 36rem;
-  line-height: 1.4;
-}
-
-.hero-stat {
-  display: flex;
-  gap: 0.75rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-top: 0.75rem;
-}
-
-.hero-card {
-  background: var(--panel);
-  border-radius: 14px;
-  padding: 1rem 1.25rem;
-  box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  animation: floatIn 0.6s ease forwards;
-}
-
-.hero-card h2 {
-  font-family: 'Space Grotesk', sans-serif;
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-}
-
-.hero-card ol {
-  margin: 0 0 0.75rem 1rem;
-  color: var(--muted);
-  display: grid;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-}
-
-.toggle-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
 
 .view-toggle {
   display: flex;
@@ -742,15 +732,21 @@
   }
 }
 
-@media (max-width: 900px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .app {
     padding: 1.25rem 1rem 2rem;
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+  }
+
+  .top-bar-right {
+    flex-wrap: wrap;
+  }
+
+  .editor-controls {
+    display: none;
   }
 
   /* On mobile, keep row layout but show info button always */

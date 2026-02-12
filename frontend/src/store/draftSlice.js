@@ -132,6 +132,7 @@ export const createDraftSlice = (set, get) => ({
         const subData = subState[activeSubsystem.id] || subs.find((s) => s.id === activeSubsystem.id)
         if (subData) {
           const parentSet = new Set(committedItems)
+          ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
           ;(subData.additions || []).forEach((id) => parentSet.add(id))
           const restoredItems = Array.from(parentSet)
           set({ selectedItems: restoredItems, lastSavedItems: restoredItems })

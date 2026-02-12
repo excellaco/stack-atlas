@@ -1,19 +1,40 @@
-.project-view-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.project-view-page .app-footer {
-  margin-top: auto;
-}
-
 .project-view {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 2.5rem;
   flex: 1;
   width: 100%;
+}
+
+.project-view-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.edit-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.edit-mode-btn:hover {
+  opacity: 0.9;
+}
+
+.edit-mode-btn svg {
+  stroke: #fff;
 }
 
 .project-view-access-denied {

@@ -147,7 +147,13 @@ export default function AdminPanel() {
   }
 
   const handleBreakLock = async (projectId, userSub) => {
-    if (!confirm('Break this lock? The user\'s draft will be discarded.')) return
+    const ok = await useStore.getState().requestConfirm({
+      title: 'Break Lock',
+      message: 'Break this lock? The user\'s draft will be discarded.',
+      confirmLabel: 'Break Lock',
+      variant: 'warning'
+    })
+    if (!ok) return
     await api.breakLock(token, projectId, userSub)
     setLocks((prev) => prev.filter((l) => !(l.projectId === projectId && l.userSub === userSub)))
   }
@@ -193,7 +199,13 @@ export default function AdminPanel() {
   }
 
   const handlePublishCatalog = async () => {
-    if (!confirm('Publish catalog changes? This will update the catalog for all users.')) return
+    const ok = await useStore.getState().requestConfirm({
+      title: 'Publish Catalog',
+      message: 'Publish catalog changes? This will update the catalog for all users.',
+      confirmLabel: 'Publish',
+      variant: 'warning'
+    })
+    if (!ok) return
     setSaving(true)
     try {
       const catalog = { categories: editCategories, types: editTypes, descriptions: editDescriptions, items: editItems }
@@ -259,8 +271,14 @@ export default function AdminPanel() {
     setEditingItem(null)
   }
 
-  const handleDeleteCatalogItem = (itemId) => {
-    if (!confirm(`Delete item "${itemId}"? It may be referenced by existing projects.`)) return
+  const handleDeleteCatalogItem = async (itemId) => {
+    const ok = await useStore.getState().requestConfirm({
+      title: 'Delete Item',
+      message: `Delete item "${itemId}"? It may be referenced by existing projects.`,
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    })
+    if (!ok) return
     setEditItems((prev) => prev.filter((i) => i.id !== itemId))
     setEditDescriptions((prev) => { const next = { ...prev }; delete next[itemId]; return next })
     setCatalogDirty(true)
@@ -276,9 +294,17 @@ export default function AdminPanel() {
     setEditingCategory(null)
   }
 
-  const handleDeleteCatalogCategory = (catId) => {
+  const handleDeleteCatalogCategory = async (catId) => {
     const count = editItems.filter((i) => i.category === catId).length
-    if (count > 0 && !confirm(`Category has ${count} items. Delete anyway?`)) return
+    if (count > 0) {
+      const ok = await useStore.getState().requestConfirm({
+        title: 'Delete Category',
+        message: `Category has ${count} items. Delete anyway?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      })
+      if (!ok) return
+    }
     setEditCategories((prev) => prev.filter((c) => c.id !== catId))
     setCatalogDirty(true)
   }
@@ -468,8 +494,14 @@ export default function AdminPanel() {
                       {p.description && <span className="admin-table-desc">{p.description}</span>}
                     </div>
                     <span className="admin-table-meta">{editorCount} editor{editorCount !== 1 ? 's' : ''}</span>
-                    <button type="button" className="ghost danger" onClick={() => {
-                      if (confirm(`Delete project "${p.name}" and all its data?`)) storeDeleteProject(p.id)
+                    <button type="button" className="ghost danger" onClick={async () => {
+                      const ok = await useStore.getState().requestConfirm({
+                        title: 'Delete Project',
+                        message: `Delete project "${p.name}" and all its data?`,
+                        confirmLabel: 'Delete',
+                        variant: 'danger'
+                      })
+                      if (ok) storeDeleteProject(p.id)
                     }}>Delete</button>
                   </div>
                 )
@@ -497,8 +529,14 @@ export default function AdminPanel() {
                           <strong>{s.name}</strong>
                           {s.description && <span className="admin-table-desc">{s.description}</span>}
                         </div>
-                        <button type="button" className="ghost danger" onClick={() => {
-                          if (confirm(`Delete subsystem "${s.name}"?`)) storeDeleteSubsystem(s.id)
+                        <button type="button" className="ghost danger" onClick={async () => {
+                          const ok = await useStore.getState().requestConfirm({
+                            title: 'Delete Subsystem',
+                            message: `Delete subsystem "${s.name}"?`,
+                            confirmLabel: 'Delete',
+                            variant: 'danger'
+                          })
+                          if (ok) storeDeleteSubsystem(s.id)
                         }}>Delete</button>
                       </div>
                     ))}

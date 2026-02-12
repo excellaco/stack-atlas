@@ -136,30 +136,35 @@ export const createProjectSlice = (set, get) => ({
 
   selectSubsystem: (subId) => {
     const { subsystems, draftSubsystems, savedStack } = get()
-    if (!subId) {
-      set({ activeSubsystem: null })
-      localStorage.removeItem('sa_activeSubsystem')
-      if (savedStack) {
+    set({ _skipAutoSave: true })
+    try {
+      if (!subId) {
+        set({ activeSubsystem: null })
+        localStorage.removeItem('sa_activeSubsystem')
+        if (savedStack) {
+          set({
+            selectedItems: [...savedStack],
+            lastSavedItems: [...savedStack],
+          })
+        }
+        return
+      }
+      const sub = subsystems.find((s) => s.id === subId)
+      set({ activeSubsystem: sub || null })
+      localStorage.setItem('sa_activeSubsystem', subId)
+      const subData = draftSubsystems[subId] || sub
+      if (subData && savedStack) {
+        const parentSet = new Set(savedStack)
+        ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
+        ;(subData.additions || []).forEach((id) => parentSet.add(id))
+        const items = Array.from(parentSet)
         set({
-          selectedItems: [...savedStack],
-          lastSavedItems: [...savedStack],
+          selectedItems: items,
+          lastSavedItems: [...items],
         })
       }
-      return
-    }
-    const sub = subsystems.find((s) => s.id === subId)
-    set({ activeSubsystem: sub || null })
-    localStorage.setItem('sa_activeSubsystem', subId)
-    const subData = draftSubsystems[subId] || sub
-    if (subData && savedStack) {
-      const parentSet = new Set(savedStack)
-      ;(subData.exclusions || []).forEach((id) => parentSet.delete(id))
-      ;(subData.additions || []).forEach((id) => parentSet.add(id))
-      const items = Array.from(parentSet)
-      set({
-        selectedItems: items,
-        lastSavedItems: [...items],
-      })
+    } finally {
+      set({ _skipAutoSave: false })
     }
   },
 

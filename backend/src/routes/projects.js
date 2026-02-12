@@ -3,7 +3,7 @@ import { isAdmin, isEditor } from "../roles.js";
 import {
   getProjectIndex, putProjectIndex,
   getStack, putStack, deleteProjectData,
-  listSubsystems, getCatalog
+  listSubsystems, getCatalog, getRoles
 } from "../storage.js";
 import { jsonResponse, parseBody, slugify, authenticate } from "./utils.js";
 
@@ -14,7 +14,14 @@ export const handleProjects = async (method, path, event, cors) => {
   if (method === "GET" && path === "/projects") {
     const user = await authenticate(auth);
     const index = await getProjectIndex();
-    return jsonResponse(200, { data: index.projects }, cors);
+    const roles = await getRoles();
+    const userIsAdmin = await isAdmin(user);
+    const projects = index.projects.map((p) => ({
+      ...p,
+      canEdit: userIsAdmin || (roles.editors[p.id] || [])
+        .some((e) => (typeof e === "string" ? e : e.sub) === user.sub)
+    }));
+    return jsonResponse(200, { data: projects }, cors);
   }
 
   if (method === "POST" && path === "/projects") {
@@ -106,17 +113,18 @@ export const handleProjects = async (method, path, event, cors) => {
   const viewMatch = path.match(/^\/projects\/([^/]+)\/view$/);
 
   if (method === "GET" && viewMatch) {
-    await authenticate(auth);
+    const user = await authenticate(auth);
     const projectId = decodeURIComponent(viewMatch[1]);
     const index = await getProjectIndex();
     const project = index.projects.find((p) => p.id === projectId);
     if (!project) return jsonResponse(404, { message: "Project not found" }, cors);
+    const canEdit = await isEditor(user, projectId);
     const stack = await getStack(projectId);
     const subsystemsList = await listSubsystems(projectId);
     const catalog = await getCatalog();
     return jsonResponse(200, {
       data: {
-        project,
+        project: { ...project, canEdit },
         stack: stack?.items || [],
         subsystems: subsystemsList,
         categories: catalog?.categories || [],

@@ -1,21 +1,24 @@
 import { useEffect, useMemo } from 'react'
-import { buildTree, flattenTree } from './utils/tree'
-import { buildExportData, formatExport } from './utils/export'
-import { buildSearchText } from './utils/search'
-import { toggleInList } from './utils/search'
-import { getParentName } from './utils/diff'
-import { useStore } from './store'
+import { useParams, useNavigate } from 'react-router-dom'
+import { buildTree, flattenTree } from '../utils/tree'
+import { buildExportData, formatExport } from '../utils/export'
+import { buildSearchText } from '../utils/search'
+import { toggleInList } from '../utils/search'
+import { getParentName } from '../utils/diff'
+import { useStore } from '../store'
 import {
   selectCatalogItems, selectItemsById, selectCategoryById,
-  selectCategoryCounts, selectTagCounts, selectTagList
-} from './store/selectors'
-import AuthBar from './components/AuthBar'
-import CommitPane from './components/CommitPane'
-import ProjectSelector from './components/ProjectSelector'
-import AdminPanel from './components/AdminPanel'
-import CommitLog from './components/CommitLog'
-import CategoryStyles from './components/CategoryStyles'
-import './App.css'
+  selectCategoryCounts, selectTagCounts, selectTagList,
+  selectDirty, selectPendingChanges
+} from '../store/selectors'
+import AuthBar from './AuthBar'
+import Breadcrumbs from './Breadcrumbs'
+import CommitPane from './CommitPane'
+import AdminPanel from './AdminPanel'
+import CommitLog from './CommitLog'
+import CategoryStyles from './CategoryStyles'
+import ConfirmModal from './ConfirmModal'
+import '../App.css'
 
 const PROVIDERS = [
   { id: 'aws', label: 'AWS' },
@@ -24,7 +27,12 @@ const PROVIDERS = [
 ]
 const PROVIDER_IDS = PROVIDERS.map((p) => p.id)
 
-function App() {
+export default function Editor({ sandbox }) {
+  const params = useParams()
+  const navigate = useNavigate()
+  const urlProjectId = sandbox ? null : params.projectId
+  const urlSubsystemId = sandbox ? null : params.subsystemId
+
   // UI state
   const query = useStore((s) => s.query)
   const setQuery = useStore((s) => s.setQuery)
@@ -60,18 +68,22 @@ function App() {
   const storeSignOut = useStore((s) => s.signOut)
   const startTokenRefresh = useStore((s) => s.startTokenRefresh)
 
-  // Project/draft (only what App.jsx layout needs)
+  // Project/draft
   const activeProject = useStore((s) => s.activeProject)
   const activeSubsystem = useStore((s) => s.activeSubsystem)
   const selectedItems = useStore((s) => s.selectedItems)
   const selectedProviders = useStore((s) => s.selectedProviders)
   const setSelectedProviders = useStore((s) => s.setSelectedProviders)
   const savedStack = useStore((s) => s.savedStack)
+  const savedProviders = useStore((s) => s.savedProviders)
   const hasDraft = useStore((s) => s.hasDraft)
   const toggleItem = useStore((s) => s.toggleItem)
   const addItems = useStore((s) => s.addItems)
   const removeItem = useStore((s) => s.removeItem)
-  const clearSelection = useStore((s) => s.clearSelection)
+  const selectProject = useStore((s) => s.selectProject)
+  const selectSubsystem = useStore((s) => s.selectSubsystem)
+  const projects = useStore((s) => s.projects)
+  const subsystems = useStore((s) => s.subsystems)
 
   // Catalog
   const catalogCategories = useStore((s) => s.catalogCategories)
@@ -110,6 +122,23 @@ function App() {
     return startTokenRefresh()
   }, [token])
 
+  // Load project from URL params
+  useEffect(() => {
+    if (!urlProjectId || !token || !projects.length) return
+    if (activeProject?.id !== urlProjectId) {
+      selectProject(urlProjectId)
+    }
+  }, [urlProjectId, token, projects.length])
+
+  // Load subsystem from URL params after project loads
+  useEffect(() => {
+    if (!urlSubsystemId || !activeProject || activeProject.id !== urlProjectId) return
+    if (!subsystems.length) return
+    if (activeSubsystem?.id !== urlSubsystemId) {
+      selectSubsystem(urlSubsystemId)
+    }
+  }, [urlSubsystemId, activeProject?.id, subsystems.length])
+
   // Derived display state
   const selectedSet = useMemo(
     () => new Set(selectedItems),
@@ -126,6 +155,17 @@ function App() {
     }
     return inherited
   }, [activeSubsystem, savedStack])
+
+  const pendingChanges = useMemo(
+    () => selectPendingChanges({ activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders }),
+    [activeProject, savedStack, activeSubsystem, subsystems, selectedItems, savedProviders, selectedProviders]
+  )
+  const hasActualChanges = pendingChanges && (
+    pendingChanges.itemsAdded.length > 0 ||
+    pendingChanges.itemsRemoved.length > 0 ||
+    pendingChanges.providersAdded.length > 0 ||
+    pendingChanges.providersRemoved.length > 0
+  )
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -220,38 +260,47 @@ function App() {
     }
   }
 
+  const handleSwitchToView = async () => {
+    if (selectDirty(useStore.getState())) {
+      const ok = await useStore.getState().requestConfirm({
+        title: 'Leave Editor',
+        message: 'You have unsaved changes that haven\'t been auto-saved yet. Continue?',
+        confirmLabel: 'Leave Editor',
+        variant: 'warning'
+      })
+      if (!ok) return
+    }
+    const subPath = activeSubsystem ? `/${activeSubsystem.id}` : ''
+    navigate(`/view/${activeProject.id}${subPath}`)
+  }
+
   return (
     <div className="app" data-density={density}>
       <CategoryStyles categories={catalogCategories} />
       <div className="top-bar">
-        <div className="brand">
-          <img src="/stack-atlas.png" alt="Stack Atlas" className="brand-logo" />
-          <span className="brand-name">Stack Atlas</span>
-        </div>
-        {!authLoading && <AuthBar />}
-      </div>
-
-      <header className="hero">
-        <div>
-          <h1>Unify how teams describe their technology stacks.</h1>
-          <p className="hero-subtitle">
-            Start with a canonical list derived from your current inventory. Filter,
-            select, and export a standard format that everyone can compare across
-            programs.
-          </p>
-          <div className="hero-stat">
-            <span>{catalogItems.length} items</span>
-            <span>{selectedItems.length} selected</span>
+        <div className="top-bar-left">
+          <div className="brand">
+            <img src="/stack-atlas.png" alt="Stack Atlas" className="brand-logo" />
+            <span className="brand-name">Stack Atlas</span>
           </div>
+          <Breadcrumbs
+            project={activeProject}
+            subsystem={activeSubsystem}
+            mode={sandbox ? 'sandbox' : 'edit'}
+          />
         </div>
-        <div className="hero-card">
-          <h2>Workflow</h2>
-          <ol>
-            <li>Filter by category, type, or search.</li>
-            <li>Select the capabilities and tools you actually use.</li>
-            <li>Export the standardized stack for side-by-side comparisons.</li>
-          </ol>
-          <div className="toggle-row">
+        <div className="top-bar-right">
+          {!sandbox && activeProject && (
+            <button type="button" className="view-mode-btn" onClick={handleSwitchToView}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              View Mode
+            </button>
+          )}
+          {sandbox && <span className="sandbox-indicator">Sandbox</span>}
+          <div className="editor-controls">
             <div className="view-toggle">
               <span>View</span>
               <button
@@ -287,12 +336,12 @@ function App() {
               </button>
             </div>
           </div>
+          {!authLoading && <AuthBar />}
         </div>
-      </header>
+      </div>
 
       <main className="main-grid">
         <aside className="filters-panel">
-          {user && <ProjectSelector />}
           <div className="panel-header">
             <h3>Filters</h3>
             <button type="button" className="ghost" onClick={resetFilters}>
@@ -560,25 +609,17 @@ function App() {
         </section>
 
         <aside className="selected-panel">
-          {activeProject && (
+          {!sandbox && activeProject && (
             <div className="project-context">
               <strong>{activeProject.name}</strong>
               {activeSubsystem && <span> / {activeSubsystem.name}</span>}
-              {hasDraft && <span className="draft-badge">Draft</span>}
-              <a
-                className="ghost project-view-link"
-                href={`/view/${activeProject.id}${activeSubsystem ? `/${activeSubsystem.id}` : ''}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View
-              </a>
+              {hasActualChanges && <span className="draft-badge">Draft</span>}
             </div>
           )}
 
-          {activeProject && token && <CommitPane />}
+          {!sandbox && activeProject && token && <CommitPane />}
 
-          {activeProject && <CommitLog />}
+          {!sandbox && activeProject && <CommitLog />}
 
           <div className="panel-header">
             <h3>Selected Stack{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}</h3>
@@ -647,6 +688,8 @@ function App() {
         </div>
       )}
 
+      <ConfirmModal />
+
       <footer className="app-footer">
         <span>Copyright &copy; {new Date().getFullYear()}</span>
         <a href="https://www.excella.com" target="_blank" rel="noreferrer">
@@ -656,5 +699,3 @@ function App() {
     </div>
   )
 }
-
-export default App

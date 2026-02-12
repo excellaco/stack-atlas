@@ -35,16 +35,28 @@ export default function CommitPane() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const hasChanges = pendingChanges && (
+    pendingChanges.itemsAdded.length > 0 ||
+    pendingChanges.itemsRemoved.length > 0 ||
+    pendingChanges.providersAdded.length > 0 ||
+    pendingChanges.providersRemoved.length > 0
+  )
+
+  const resolveItemName = (id) => {
+    const item = itemsById?.get(id)
+    return item ? `${item.name} (${item.type})` : id
+  }
+
   const statusLabel =
     draftStatus === 'saving' ? 'Saving...' :
-    draftStatus === 'saved' && !dirty ? 'Draft saved' :
     dirty ? 'Unsaved changes' :
+    hasChanges ? 'Draft saved' :
     'Up to date'
 
   const statusClass =
     draftStatus === 'saving' ? 'saving' :
     dirty ? 'unsaved' :
-    draftStatus === 'saved' ? 'saved' :
+    hasChanges ? 'saved' :
     'idle'
 
   const handleCommit = async (e) => {
@@ -64,21 +76,15 @@ export default function CommitPane() {
   }
 
   const handleDiscard = async () => {
-    if (!confirm('Discard all uncommitted changes?')) return
+    const ok = await useStore.getState().requestConfirm({
+      title: 'Discard Draft',
+      message: 'Discard all uncommitted changes? This cannot be undone.',
+      confirmLabel: 'Discard',
+      variant: 'danger'
+    })
+    if (!ok) return
     await discard()
   }
-
-  const resolveItemName = (id) => {
-    const item = itemsById?.get(id)
-    return item ? `${item.name} (${item.type})` : id
-  }
-
-  const hasChanges = pendingChanges && (
-    pendingChanges.itemsAdded.length > 0 ||
-    pendingChanges.itemsRemoved.length > 0 ||
-    pendingChanges.providersAdded.length > 0 ||
-    pendingChanges.providersRemoved.length > 0
-  )
 
   return (
     <div className="commit-pane">
@@ -107,10 +113,10 @@ export default function CommitPane() {
               ))}
             </div>
           )}
-          {!hasChanges && (hasDraft || dirty) && (
-            <div className="commit-pane-no-changes">Draft saved, no new changes</div>
+          {!hasChanges && dirty && (
+            <div className="commit-pane-no-changes">Saving changes...</div>
           )}
-          {!hasChanges && !hasDraft && !dirty && (
+          {!hasChanges && !dirty && (
             <div className="commit-pane-no-changes">No changes to commit</div>
           )}
         </div>
@@ -128,14 +134,14 @@ export default function CommitPane() {
           <button
             type="submit"
             className="primary"
-            disabled={loading || !message.trim() || !hasDraft}
+            disabled={loading || !message.trim() || (!hasDraft && !hasChanges)}
           >
             {loading ? 'Committing...' : 'Commit'}
           </button>
           <button
             type="button"
             className="ghost danger"
-            disabled={!hasDraft}
+            disabled={!hasDraft && !hasChanges}
             onClick={handleDiscard}
           >
             Discard
