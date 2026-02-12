@@ -4072,9 +4072,9 @@ export const enrichItems = (
   rawItemList: RawItem[],
   descriptions: Record<string, string>
 ): EnrichedItem[] =>
-  rawItemList.map((item) => ({
+  (rawItemList || []).map((item) => ({
     ...item,
-    description: descriptions[item.id],
+    description: (descriptions || {})[item.id],
     tags: buildTags(item),
   }));
 

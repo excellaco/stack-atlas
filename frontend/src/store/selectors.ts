@@ -7,13 +7,13 @@ import type { StoreState } from "./types";
 // Use with useMemo in components for memoization.
 
 export const selectCatalogItems = (s: StoreState): EnrichedItem[] =>
-  enrichItems(s.catalogRawItems, s.catalogDescriptions);
+  enrichItems(s.catalogRawItems || [], s.catalogDescriptions || {});
 
 export const selectItemsById = (items: EnrichedItem[]): Map<string, EnrichedItem> =>
-  new Map(items.map((item) => [item.id, item]));
+  new Map((items || []).map((item) => [item.id, item]));
 
 export const selectCategoryById = (s: StoreState): Map<string, Category> =>
-  new Map(s.catalogCategories.map((c) => [c.id, c]));
+  new Map((s.catalogCategories || []).map((c) => [c.id, c]));
 
 export const selectCategoryCounts = (items: EnrichedItem[]): Record<string, number> =>
   items.reduce<Record<string, number>>((acc, item) => {
@@ -41,12 +41,16 @@ export const selectIsAdmin = (s: StoreState): boolean =>
 // Draft-derived selectors
 export const selectDirty = (s: StoreState): boolean => {
   if (!s.activeProject || !s.lastSavedItems) return false;
-  if (s.selectedItems.length !== s.lastSavedItems.length) return true;
-  const saved = new Set(s.lastSavedItems);
-  if (s.selectedItems.some((id) => !saved.has(id))) return true;
-  if (s.selectedProviders.length !== s.lastSavedProviders.length) return true;
-  const sp = new Set(s.lastSavedProviders);
-  if (s.selectedProviders.some((p) => !sp.has(p))) return true;
+  const selectedItems = s.selectedItems || [];
+  const lastSavedItems = s.lastSavedItems || [];
+  const selectedProviders = s.selectedProviders || [];
+  const lastSavedProviders = s.lastSavedProviders || [];
+  if (selectedItems.length !== lastSavedItems.length) return true;
+  const saved = new Set(lastSavedItems);
+  if (selectedItems.some((id) => !saved.has(id))) return true;
+  if (selectedProviders.length !== lastSavedProviders.length) return true;
+  const sp = new Set(lastSavedProviders);
+  if (selectedProviders.some((p) => !sp.has(p))) return true;
   return false;
 };
 
@@ -54,7 +58,7 @@ export const selectPendingChanges = (s: StoreState): PendingChanges | null => {
   if (!s.activeProject || !s.savedStack) return null;
   let committedItems: string[] = s.savedStack;
   if (s.activeSubsystem) {
-    const committedSub = s.subsystems.find((sub) => sub.id === s.activeSubsystem!.id);
+    const committedSub = (s.subsystems || []).find((sub) => sub.id === s.activeSubsystem!.id);
     if (committedSub) {
       const parentSet = new Set(s.savedStack);
       (committedSub.exclusions || []).forEach((id) => parentSet.delete(id));
@@ -62,13 +66,16 @@ export const selectPendingChanges = (s: StoreState): PendingChanges | null => {
       committedItems = Array.from(parentSet);
     }
   }
+  const selectedItems = s.selectedItems || [];
+  const selectedProviders = s.selectedProviders || [];
+  const savedProviders = s.savedProviders || [];
   const savedSet = new Set(committedItems);
-  const currentSet = new Set(s.selectedItems);
-  const itemsAdded: string[] = s.selectedItems.filter((id) => !savedSet.has(id));
+  const currentSet = new Set(selectedItems);
+  const itemsAdded: string[] = selectedItems.filter((id) => !savedSet.has(id));
   const itemsRemoved: string[] = committedItems.filter((id) => !currentSet.has(id));
-  const savedProvSet = new Set(s.savedProviders);
-  const currProvSet = new Set(s.selectedProviders);
-  const providersAdded: string[] = s.selectedProviders.filter((p) => !savedProvSet.has(p));
-  const providersRemoved: string[] = s.savedProviders.filter((p) => !currProvSet.has(p));
+  const savedProvSet = new Set(savedProviders);
+  const currProvSet = new Set(selectedProviders);
+  const providersAdded: string[] = selectedProviders.filter((p) => !savedProvSet.has(p));
+  const providersRemoved: string[] = savedProviders.filter((p) => !currProvSet.has(p));
   return { itemsAdded, itemsRemoved, providersAdded, providersRemoved };
 };

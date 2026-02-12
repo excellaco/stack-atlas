@@ -31,11 +31,7 @@ function ErrorFallback({
           <button type="button" className="primary" onClick={onReset}>
             Try Again
           </button>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => window.location.reload()}
-          >
+          <button type="button" className="ghost" onClick={() => window.location.reload()}>
             Reload Page
           </button>
         </div>
@@ -66,11 +62,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   render(): React.JSX.Element {
     if (this.state.hasError) {
       return (
-        <ErrorFallback
-          name={this.props.name}
-          error={this.state.error}
-          onReset={this.handleReset}
-        />
+        <ErrorFallback name={this.props.name} error={this.state.error} onReset={this.handleReset} />
       );
     }
     return <>{this.props.children}</>;

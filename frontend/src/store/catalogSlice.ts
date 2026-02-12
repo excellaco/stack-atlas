@@ -20,11 +20,12 @@ export const createCatalogSlice = (set: StoreSet, get: StoreGet): CatalogSlice =
     if (!token) return;
     try {
       const catalog: Catalog = await api.getCatalog(token);
+      if (!catalog?.categories || !catalog?.items) return;
       set({
         catalogCategories: catalog.categories,
-        catalogTypes: catalog.types,
+        catalogTypes: catalog.types || [],
         catalogRawItems: catalog.items,
-        catalogDescriptions: catalog.descriptions,
+        catalogDescriptions: catalog.descriptions || {},
         catalogSource: "api",
       });
     } catch {

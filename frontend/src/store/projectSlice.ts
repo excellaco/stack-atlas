@@ -113,8 +113,10 @@ function resolveDraftOverrides(
   committedProviders: string[]
 ): { items: string[]; providers: string[] } {
   if (!draftData) return { items: committedItems, providers: committedProviders };
-  const items = draftData.stack?.items || committedItems;
-  const providers = draftData.stack?.providers || committedProviders;
+  const items = Array.isArray(draftData.stack?.items) ? draftData.stack.items : committedItems;
+  const providers = Array.isArray(draftData.stack?.providers)
+    ? draftData.stack.providers
+    : committedProviders;
   return { items, providers };
 }
 
