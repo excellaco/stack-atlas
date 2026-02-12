@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import '../App.css'
+import './AuthBar.css'
 
 export default function AuthBar({ user, onSignIn, onSignOut, isAdmin, onAdminClick }) {
   const [showForm, setShowForm] = useState(false)

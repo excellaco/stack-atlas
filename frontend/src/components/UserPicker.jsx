@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import '../App.css'
+import './UserPicker.css'
 
 export default function UserPicker({ users, onSelect, exclude }) {
   const [query, setQuery] = useState('')

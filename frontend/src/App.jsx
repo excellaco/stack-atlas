@@ -18,6 +18,7 @@ import CommitDialog from './components/CommitDialog'
 import ProjectSelector from './components/ProjectSelector'
 import AdminPanel from './components/AdminPanel'
 import CommitLog from './components/CommitLog'
+import CategoryStyles from './components/CategoryStyles'
 import './App.css'
 
 // --- Main App ---
@@ -540,7 +541,8 @@ function App() {
   }
 
   return (
-    <div className={`app ${density}`}>
+    <div className="app" data-density={density}>
+      <CategoryStyles categories={catalogCategories} />
       {!authLoading && (
         <AuthBar
           user={user}
@@ -582,14 +584,14 @@ function App() {
               <span>View</span>
               <button
                 type="button"
-                className={viewMode === 'hierarchy' ? 'active' : ''}
+                data-active={viewMode === 'hierarchy' || undefined}
                 onClick={() => setViewMode('hierarchy')}
               >
                 Hierarchy
               </button>
               <button
                 type="button"
-                className={viewMode === 'flat' ? 'active' : ''}
+                data-active={viewMode === 'flat' || undefined}
                 onClick={() => setViewMode('flat')}
               >
                 Flat
@@ -599,14 +601,14 @@ function App() {
               <span>Density</span>
               <button
                 type="button"
-                className={density === 'compact' ? 'active' : ''}
+                data-active={density === 'compact' || undefined}
                 onClick={() => setDensity('compact')}
               >
                 Compact
               </button>
               <button
                 type="button"
-                className={density === 'comfortable' ? 'active' : ''}
+                data-active={density === 'comfortable' || undefined}
                 onClick={() => setDensity('comfortable')}
               >
                 Comfortable
@@ -677,12 +679,9 @@ function App() {
                   <button
                     key={category.id}
                     type="button"
-                    className={
-                      selectedCategories.includes(category.id)
-                        ? 'chip active'
-                        : 'chip'
-                    }
-                    style={{ '--chip': category.color }}
+                    className="chip"
+                    data-active={selectedCategories.includes(category.id) || undefined}
+                    data-category={category.id}
                     onClick={() =>
                       setSelectedCategories((prev) =>
                         toggleInList(prev, category.id)
@@ -715,7 +714,8 @@ function App() {
                   <button
                     key={type}
                     type="button"
-                    className={selectedTypes.includes(type) ? 'chip active' : 'chip'}
+                    className="chip"
+                    data-active={selectedTypes.includes(type) || undefined}
                     onClick={() =>
                       setSelectedTypes((prev) => toggleInList(prev, type))
                     }
@@ -745,7 +745,8 @@ function App() {
                   <button
                     key={tag}
                     type="button"
-                    className={selectedTags.includes(tag) ? 'chip active' : 'chip'}
+                    className="chip"
+                    data-active={selectedTags.includes(tag) || undefined}
                     onClick={() =>
                       setSelectedTags((prev) => toggleInList(prev, tag))
                     }
@@ -763,7 +764,7 @@ function App() {
           {sections.map((section) => {
             const isCollapsed = collapsedCategories.has(section.id)
             return (
-            <div key={section.id} className={`category-section ${isCollapsed ? 'collapsed' : ''}`}>
+            <div key={section.id} className="category-section" data-collapsed={isCollapsed || undefined} data-category={section.id}>
               <button
                 type="button"
                 className="section-header"
@@ -799,12 +800,11 @@ function App() {
                   return (
                     <article
                       key={item.id}
-                      className={`item-card${isSelected ? ' is-selected' : ''}${isInherited && isSelected ? ' is-inherited' : ''}`}
-                      style={{
-                        '--accent': section.color,
-                        '--depth': depth,
-                        '--delay': `${Math.min(index, 10) * 45}ms`
-                      }}
+                      className="item-card"
+                      data-selected={isSelected || undefined}
+                      data-inherited={isInherited && isSelected || undefined}
+                      data-depth={depth || undefined}
+                      data-delay={Math.min(index, 10) || undefined}
                       onClick={() => toggleItem(item.id)}
                     >
                       <div className="item-main">
@@ -910,7 +910,7 @@ function App() {
                   <div className="selected-group-title">
                     <span
                       className="dot"
-                      style={{ '--dot': group.category.color }}
+                      data-category={group.category.id}
                     />
                     {group.category.name}
                   </div>
@@ -919,7 +919,8 @@ function App() {
                       <button
                         key={item.id}
                         type="button"
-                        className={`selected-chip${inheritedSet.has(item.id) ? ' inherited' : ''}`}
+                        className="selected-chip"
+                        data-inherited={inheritedSet.has(item.id) || undefined}
                         onClick={() => removeItem(item.id)}
                       >
                         {item.name}
@@ -943,14 +944,16 @@ function App() {
               <div className="export-actions">
                 <button
                   type="button"
-                  className={exportFormat === 'markdown' ? 'chip active' : 'chip'}
+                  className="chip"
+                  data-active={exportFormat === 'markdown' || undefined}
                   onClick={() => setExportFormat('markdown')}
                 >
                   Markdown
                 </button>
                 <button
                   type="button"
-                  className={exportFormat === 'json' ? 'chip active' : 'chip'}
+                  className="chip"
+                  data-active={exportFormat === 'json' || undefined}
                   onClick={() => setExportFormat('json')}
                 >
                   JSON

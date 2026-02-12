@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import '../App.css'
+import './ProjectSelector.css'
 
 export default function ProjectSelector({
   token, projects, activeProject, activeSubsystem, subsystems,

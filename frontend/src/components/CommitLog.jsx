@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as api from '../api'
 import { computeDiff, resolveItemName, formatTimeAgo } from '../utils/diff'
-import '../App.css'
+import './CommitLog.css'
 
 export default function CommitLog({ token, projectId, itemsById }) {
   const [commits, setCommits] = useState([])

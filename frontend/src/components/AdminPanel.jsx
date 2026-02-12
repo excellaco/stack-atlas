@@ -9,7 +9,8 @@ import * as api from '../api'
 import { computeDiff, resolveItemName, formatTimeAgo } from '../utils/diff'
 import UserPicker from './UserPicker'
 import CatalogItemForm from './CatalogItemForm'
-import '../App.css'
+import CategoryStyles from './CategoryStyles'
+import './AdminPanel.css'
 
 export default function AdminPanel({ token, projects, onClose, onCreateProject, onDeleteProject, itemsById, catalogCategories, catalogTypes, catalogRawItems, catalogDescriptions, catalogSource, onCatalogPublished }) {
   const [tab, setTab] = useState('roles')
@@ -256,9 +257,10 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
   return (
     <div className="admin-overlay" onClick={onClose}>
       <div className="admin-panel" onClick={(e) => e.stopPropagation()}>
+        <CategoryStyles categories={editCategories} />
         <div className="panel-header">
           <h3>Admin</h3>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="admin-header-actions">
             <button type="button" className="ghost" onClick={handleDownloadCatalog}>Download Catalog</button>
             <button type="button" className="ghost" onClick={onClose}>Close</button>
           </div>
@@ -269,7 +271,8 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
             <button
               key={t.id}
               type="button"
-              className={`admin-tab${tab === t.id ? ' active' : ''}`}
+              className="admin-tab"
+              data-active={tab === t.id || undefined}
               onClick={() => setTab(t.id)}
             >
               {t.label}
@@ -338,12 +341,12 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
           <>
             <section className="admin-section">
               <div className="catalog-actions">
-                <button type="button" className={catalogDirty ? 'primary' : 'ghost'} onClick={handlePublishCatalog} disabled={!catalogDirty || saving}>
+                <button type="button" className="publish-catalog-btn" data-dirty={catalogDirty || undefined} onClick={handlePublishCatalog} disabled={!catalogDirty || saving}>
                   {saving ? 'Publishing...' : 'Publish to S3'}
                 </button>
                 <button type="button" className="ghost" onClick={() => fileInputRef.current?.click()}>Upload JSON</button>
                 <button type="button" className="ghost" onClick={handleSeedFromStatic}>Seed from Static</button>
-                <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleUploadCatalog} />
+                <input ref={fileInputRef} type="file" accept=".json" className="hidden-input" onChange={handleUploadCatalog} />
                 <span className="catalog-source-badge">{catalogSource === 'api' ? 'S3' : 'Static'}{catalogDirty ? ' *' : ''}</span>
               </div>
             </section>
@@ -366,7 +369,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
                 {editCategories.map((cat) => (
                   <div key={cat.id} className="admin-table-row">
                     <div className="admin-table-main">
-                      <span className="catalog-color-dot" style={{ background: cat.color }} />
+                      <span className="catalog-color-dot" data-category={cat.id} />
                       <strong>{cat.name}</strong>
                       {cat.description && <span className="admin-table-desc">{cat.description}</span>}
                     </div>
@@ -443,7 +446,7 @@ export default function AdminPanel({ token, projects, onClose, onCreateProject, 
                 <button type="button" className="ghost" onClick={() => setShowCreate(false)}>Cancel</button>
               </form>
             ) : (
-              <button type="button" className="ghost" onClick={() => setShowCreate(true)} style={{ marginTop: '0.5rem' }}>+ New Project</button>
+              <button type="button" className="ghost admin-new-project-btn" onClick={() => setShowCreate(true)}>+ New Project</button>
             )}
           </section>
         )}

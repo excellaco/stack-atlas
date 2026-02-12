@@ -1,0 +1,33 @@
+.commit-log {
+  margin-top: 0.5rem;
+}
+
+.commit-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.35rem 0;
+  user-select: none;
+}
+
+.commit-log-header h4 {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.commit-log-toggle {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.commit-log-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}

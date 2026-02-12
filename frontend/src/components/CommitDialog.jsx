@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import '../App.css'
+import './CommitDialog.css'
 
 export default function CommitDialog({ onCommit, onClose }) {
   const [message, setMessage] = useState('')

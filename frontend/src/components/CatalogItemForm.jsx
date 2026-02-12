@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import '../App.css'
+
 
 export default function CatalogItemForm({ item, description: initialDesc, categories, types, onSave, onCancel }) {
   const [id, setId] = useState(item?.id || '')
