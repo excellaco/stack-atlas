@@ -682,33 +682,33 @@ function App() {
   return (
     <div className="app" data-density={density}>
       <CategoryStyles categories={catalogCategories} />
-      {!authLoading && (
-        <AuthBar
-          user={user}
-          onSignIn={handleSignIn}
-          onSignOut={handleSignOut}
-          isAdmin={isAdmin}
-          onAdminClick={() => setShowAdmin(true)}
-        />
-      )}
+      <div className="top-bar">
+        <div className="brand">
+          <img src="/stack-atlas.png" alt="Stack Atlas" className="brand-logo" />
+          <span className="brand-name">Stack Atlas</span>
+        </div>
+        {!authLoading && (
+          <AuthBar
+            user={user}
+            onSignIn={handleSignIn}
+            onSignOut={handleSignOut}
+            isAdmin={isAdmin}
+            onAdminClick={() => setShowAdmin(true)}
+          />
+        )}
+      </div>
 
       <header className="hero">
         <div>
-          <p className="eyebrow">Stack Atlas</p>
           <h1>Unify how teams describe their technology stacks.</h1>
           <p className="hero-subtitle">
             Start with a canonical list derived from your current inventory. Filter,
             select, and export a standard format that everyone can compare across
             programs.
           </p>
-          <div className="hero-actions">
-            <button type="button" className="primary" onClick={resetFilters}>
-              Reset filters
-            </button>
-            <div className="hero-stat">
-              <span>{catalogItems.length} items</span>
-              <span>{selectedItems.length} selected</span>
-            </div>
+          <div className="hero-stat">
+            <span>{catalogItems.length} items</span>
+            <span>{selectedItems.length} selected</span>
           </div>
         </div>
         <div className="hero-card">
@@ -1148,7 +1148,7 @@ function App() {
           </div>
 
           {activeProject && (
-            <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} />
+            <CommitLog token={token} projectId={activeProject.id} itemsById={itemsById} commitVersion={commitVersion} activeSubsystem={activeSubsystem} />
           )}
         </aside>
       </main>

@@ -3,7 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import Markdown from 'react-markdown'
 import { signIn, signOut, getSession, parseIdToken } from '../auth'
 import * as api from '../api'
-import { enrichItems } from '../data/stackData'
+import {
+  categories as staticCategories,
+  rawItems as staticRawItems,
+  descriptionById as staticDescriptions,
+  enrichItems
+} from '../data/stackData'
 import { buildExportData, formatExport } from '../utils/export'
 import AuthBar from './AuthBar'
 import './ProjectView.css'
@@ -72,9 +77,13 @@ export default function ProjectView() {
 
   const markdown = useMemo(() => {
     if (!data) return ''
-    const items = enrichItems(data.items, data.descriptions)
+    // Fall back to static catalog when API catalog is empty (not yet published)
+    const catalogItems = data.items.length ? data.items : staticRawItems
+    const catalogDescs = Object.keys(data.descriptions).length ? data.descriptions : staticDescriptions
+    const catalogCats = data.categories.length ? data.categories : staticCategories
+    const items = enrichItems(catalogItems, catalogDescs)
     const itemsById = new Map(items.map((item) => [item.id, item]))
-    const exportData = buildExportData(effectiveStack, itemsById, data.categories)
+    const exportData = buildExportData(effectiveStack, itemsById, catalogCats)
     return formatExport(exportData, 'markdown')
   }, [data, effectiveStack])
 
