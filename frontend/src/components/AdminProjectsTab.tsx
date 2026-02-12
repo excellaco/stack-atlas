@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useStore } from "../store";
 import type { Project, Subsystem, Roles } from "../types";
 
@@ -50,7 +49,7 @@ interface CreateFormProps {
   desc: string;
   onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDescChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
   onCancel: () => void;
 }
 
@@ -145,7 +144,7 @@ interface SubsystemsSectionSub {
   setNewSubName: React.Dispatch<React.SetStateAction<string>>;
   newSubDesc: string;
   setNewSubDesc: React.Dispatch<React.SetStateAction<string>>;
-  onCreateSub: (e: FormEvent<HTMLFormElement>) => void;
+  onCreateSub: (e: React.SubmitEvent<HTMLFormElement>) => void;
   onDeleteSubsystem: (subId: string) => void;
 }
 
@@ -197,7 +196,7 @@ interface ProjProps {
   setNewProjName: React.Dispatch<React.SetStateAction<string>>;
   newProjDesc: string;
   setNewProjDesc: React.Dispatch<React.SetStateAction<string>>;
-  onCreateProject: (e: FormEvent<HTMLFormElement>) => void;
+  onCreateProject: (e: React.SubmitEvent<HTMLFormElement>) => void;
   onDeleteProject: (projectId: string) => void;
 }
 
@@ -210,7 +209,7 @@ interface SubProps {
   setNewSubName: React.Dispatch<React.SetStateAction<string>>;
   newSubDesc: string;
   setNewSubDesc: React.Dispatch<React.SetStateAction<string>>;
-  onCreateSub: (e: FormEvent<HTMLFormElement>) => void;
+  onCreateSub: (e: React.SubmitEvent<HTMLFormElement>) => void;
   onDeleteSubsystem: (subId: string) => void;
 }
 

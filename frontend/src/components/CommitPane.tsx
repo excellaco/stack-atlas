@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../store";
 import { selectDirty, selectPendingChanges, selectCatalogItems, selectItemsById } from "../store/selectors";
 import type { PendingChanges, DraftStatus } from "../types";
@@ -52,7 +52,7 @@ function ChangesList({
 interface CommitFormProps {
   message: string;
   setMessage: React.Dispatch<React.SetStateAction<string>>;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
   onDiscard: () => void;
   loading: boolean;
   error: string;
@@ -224,10 +224,10 @@ function useCommitActions(
   setError: React.Dispatch<React.SetStateAction<string>>,
   message: string
 ): {
-  handleCommit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  handleCommit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
   handleDiscard: () => Promise<void>;
 } {
-  const handleCommit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleCommit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!message.trim()) return;
     setLoading(true);

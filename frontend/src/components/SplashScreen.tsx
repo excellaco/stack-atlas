@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../store";
 import "./SplashScreen.css";
@@ -18,7 +18,7 @@ function SplashSignInForm({ onSignIn }: Readonly<SplashSignInFormProps>): React.
     emailRef.current?.focus();
   }, []);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError("");
     setLoading(true);

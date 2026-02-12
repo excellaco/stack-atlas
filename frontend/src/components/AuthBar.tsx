@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { selectIsAdmin } from "../store/selectors";
 import "./AuthBar.css";
@@ -11,7 +11,7 @@ interface SignInFormFieldsProps {
   setPassword: React.Dispatch<React.SetStateAction<string>>;
   loading: boolean;
   error: string;
-  handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  handleSubmit: (e: React.SubmitEvent<HTMLFormElement>) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -75,7 +75,7 @@ function SignInForm({ onSignIn, onCancel }: Readonly<SignInFormProps>): React.JS
     emailRef.current?.focus();
   }, []);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError("");
     setLoading(true);

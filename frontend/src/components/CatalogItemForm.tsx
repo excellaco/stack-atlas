@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Category, RawItem } from "../types";
 
 function parseCommaSeparated(value: string): string[] | undefined {
@@ -277,7 +277,7 @@ export default function CatalogItemForm({
 }: Readonly<Props>): React.JSX.Element {
   const { state, setters } = useFormState(item, initialDesc, categories, types);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>): void => {
     e.preventDefault();
     onSave(buildFormResult(state), state.description.trim());
   };
