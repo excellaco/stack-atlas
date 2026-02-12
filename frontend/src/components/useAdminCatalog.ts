@@ -134,15 +134,28 @@ function useCatalogEditState(
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [itemSearch, setItemSearch] = useState("");
   const [itemCategoryFilter, setItemCategoryFilter] = useState("");
-  const setters: CatalogSetters = {
-    setEditCategories,
-    setEditItems,
-    setEditTypes,
-    setEditDescriptions,
-    setCatalogDirty,
-    setEditingItem,
-    setEditingCategory,
-  };
+  // Memoize setters so useSyncFromStore's useEffect doesn't re-run every render
+  // and reset catalogDirty. All useState setters are referentially stable.
+  const setters = useMemo<CatalogSetters>(
+    () => ({
+      setEditCategories,
+      setEditItems,
+      setEditTypes,
+      setEditDescriptions,
+      setCatalogDirty,
+      setEditingItem,
+      setEditingCategory,
+    }),
+    [
+      setEditCategories,
+      setEditItems,
+      setEditTypes,
+      setEditDescriptions,
+      setCatalogDirty,
+      setEditingItem,
+      setEditingCategory,
+    ]
+  );
   return {
     editCategories,
     editItems,
