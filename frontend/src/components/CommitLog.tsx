@@ -309,7 +309,11 @@ interface CommitLogHeaderProps {
   count: number;
 }
 
-function CommitLogHeader({ isOpen, onToggle, count }: Readonly<CommitLogHeaderProps>): React.JSX.Element {
+function CommitLogHeader({
+  isOpen,
+  onToggle,
+  count,
+}: Readonly<CommitLogHeaderProps>): React.JSX.Element {
   return (
     <div
       className="commit-log-header"
@@ -344,7 +348,11 @@ export default function CommitLog(): React.JSX.Element {
 
   return (
     <div className="commit-log">
-      <CommitLogHeader isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} count={relevantCommits.length} />
+      <CommitLogHeader
+        isOpen={isOpen}
+        onToggle={() => setIsOpen(!isOpen)}
+        count={relevantCommits.length}
+      />
       {isOpen && (
         <CommitLogBody
           loading={loading}

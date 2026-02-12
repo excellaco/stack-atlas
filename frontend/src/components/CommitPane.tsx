@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../store";
-import { selectDirty, selectPendingChanges, selectCatalogItems, selectItemsById } from "../store/selectors";
+import {
+  selectDirty,
+  selectPendingChanges,
+  selectCatalogItems,
+  selectItemsById,
+} from "../store/selectors";
 import type { PendingChanges, DraftStatus } from "../types";
 import "./CommitPane.css";
 

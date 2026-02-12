@@ -20,20 +20,20 @@ Unify how teams describe their technology stacks. Stack Atlas provides a curated
 
 ## Tech Stack
 
-| Layer          | Technology                                                |
-| -------------- | --------------------------------------------------------- |
-| Frontend       | React 18, TypeScript, Vite, Zustand, React Router         |
-| Backend        | Node.js 24, TypeScript, AWS Lambda, esbuild               |
-| Auth           | Amazon Cognito (JWT)                                      |
-| Data           | Amazon S3 (JSON documents)                                |
-| API            | API Gateway HTTP API                                      |
-| CDN            | CloudFront + WAF                                          |
-| DNS/TLS        | Route 53, ACM                                             |
-| IaC            | Terraform                                                 |
-| CI/CD          | GitHub Actions (OIDC)                                     |
-| Testing        | Vitest, E2E smoke tests                                   |
-| Linting        | ESLint, Prettier, Stylelint, SonarJS, jsx-a11y, TFLint    |
-| Security       | Trivy (IaC misconfiguration + secret detection)           |
+| Layer    | Technology                                             |
+| -------- | ------------------------------------------------------ |
+| Frontend | React 18, TypeScript, Vite, Zustand, React Router      |
+| Backend  | Node.js 24, TypeScript, AWS Lambda, esbuild            |
+| Auth     | Amazon Cognito (JWT)                                   |
+| Data     | Amazon S3 (JSON documents)                             |
+| API      | API Gateway HTTP API                                   |
+| CDN      | CloudFront + WAF                                       |
+| DNS/TLS  | Route 53, ACM                                          |
+| IaC      | Terraform                                              |
+| CI/CD    | GitHub Actions (OIDC)                                  |
+| Testing  | Vitest, E2E smoke tests                                |
+| Linting  | ESLint, Prettier, Stylelint, SonarJS, jsx-a11y, TFLint |
+| Security | Trivy (IaC misconfiguration + secret detection)        |
 
 ## Quick Start
 
@@ -95,14 +95,14 @@ bash scripts/e2e.sh      # Fetch E2E config from Secrets Manager and run smoke t
 
 **Unit & integration tests** (63 tests across 6 files):
 
-| Area     | Test File                                 | Coverage                                    |
-| -------- | ----------------------------------------- | ------------------------------------------- |
-| Backend  | `handler.integration.test.ts`             | Full request lifecycle (auth, routing, S3)   |
-| Backend  | `routes/drafts.test.ts`                   | Lock checks, snapshot building, subsystem logic |
-| Backend  | `routes/utils.test.ts`                    | CORS, auth helpers, response formatting      |
-| Frontend | `store/selectors.test.ts`                 | Dirty detection, pending changes, catalog selectors |
-| Frontend | `utils/diff.test.ts`                      | Commit diff computation                      |
-| Frontend | `utils/export.test.ts`                    | Markdown/JSON export formatting              |
+| Area     | Test File                     | Coverage                                            |
+| -------- | ----------------------------- | --------------------------------------------------- |
+| Backend  | `handler.integration.test.ts` | Full request lifecycle (auth, routing, S3)          |
+| Backend  | `routes/drafts.test.ts`       | Lock checks, snapshot building, subsystem logic     |
+| Backend  | `routes/utils.test.ts`        | CORS, auth helpers, response formatting             |
+| Frontend | `store/selectors.test.ts`     | Dirty detection, pending changes, catalog selectors |
+| Frontend | `utils/diff.test.ts`          | Commit diff computation                             |
+| Frontend | `utils/export.test.ts`        | Markdown/JSON export formatting                     |
 
 **E2E smoke tests** (`e2e/smoke.ts`): authenticates via Cognito, exercises project CRUD, stack operations, draft workflow, commit/discard, subsystem CRUD, and admin endpoints against the live deployment.
 

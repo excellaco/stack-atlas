@@ -3,6 +3,7 @@
 ## CRITICAL: No Destructive Git Commands
 
 **NEVER run destructive git commands** including but not limited to:
+
 - `git reset` (soft, mixed, or hard)
 - `git checkout .` or `git checkout -- <file>` (discards uncommitted work)
 - `git restore .` (discards uncommitted work)
@@ -225,14 +226,14 @@ Backend builds to **CJS** (`--format=cjs`) despite using ESM in source — this 
 
 6 test files, 63 tests total. Node environment only — no component/rendering tests. Tests cover pure functions and handler-level integration:
 
-| File | What it tests |
-| --- | --- |
+| File                                      | What it tests                                                                                       |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `backend/src/handler.integration.test.ts` | Full request lifecycle. Mocks only storage.ts (S3) and auth.ts (JWT); everything else runs for real |
-| `backend/src/routes/drafts.test.ts` | Lock checks, snapshot building, subsystem overlay logic |
-| `backend/src/routes/utils.test.ts` | CORS headers, auth guards, response formatting |
-| `frontend/src/store/selectors.test.ts` | Dirty detection, pending changes, catalog item selectors |
-| `frontend/src/utils/diff.test.ts` | Commit diff computation |
-| `frontend/src/utils/export.test.ts` | Markdown/JSON export formatting |
+| `backend/src/routes/drafts.test.ts`       | Lock checks, snapshot building, subsystem overlay logic                                             |
+| `backend/src/routes/utils.test.ts`        | CORS headers, auth guards, response formatting                                                      |
+| `frontend/src/store/selectors.test.ts`    | Dirty detection, pending changes, catalog item selectors                                            |
+| `frontend/src/utils/diff.test.ts`         | Commit diff computation                                                                             |
+| `frontend/src/utils/export.test.ts`       | Markdown/JSON export formatting                                                                     |
 
 ### E2E Smoke Tests
 
@@ -242,13 +243,13 @@ E2E credentials are stored in AWS Secrets Manager (populated by Terraform in `e2
 
 ## Linting & Formatting
 
-| Tool | Config | Scope |
-| --- | --- | --- |
-| ESLint | `eslint.config.mjs` | TypeScript, React, accessibility (jsx-a11y), code quality (SonarJS) |
-| Prettier | `.prettierrc` | Code formatting (double quotes, semicolons, 100-char width) |
-| Stylelint | `.stylelintrc.json` | CSS linting (standard config) |
-| TFLint | (via `npm run lint:tf`) | Terraform linting |
-| Trivy | (via `npm run security`) | IaC misconfiguration + secret detection |
+| Tool      | Config                   | Scope                                                               |
+| --------- | ------------------------ | ------------------------------------------------------------------- |
+| ESLint    | `eslint.config.mjs`      | TypeScript, React, accessibility (jsx-a11y), code quality (SonarJS) |
+| Prettier  | `.prettierrc`            | Code formatting (double quotes, semicolons, 100-char width)         |
+| Stylelint | `.stylelintrc.json`      | CSS linting (standard config)                                       |
+| TFLint    | (via `npm run lint:tf`)  | Terraform linting                                                   |
+| Trivy     | (via `npm run security`) | IaC misconfiguration + secret detection                             |
 
 ESLint notable rules: complexity warn at 10, max-lines warn at 300, max-lines-per-function warn at 50, max-depth warn at 4. `data/stackData.ts` is excluded from linting (auto-generated, ~4000 lines).
 
