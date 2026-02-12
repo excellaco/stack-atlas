@@ -3,6 +3,7 @@ import globals from "globals";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import sonarjs from "eslint-plugin-sonarjs";
 import prettier from "eslint-config-prettier";
 
 export default [
@@ -79,6 +80,9 @@ export default [
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
+
+  // SonarJS: code quality rules
+  sonarjs.configs.recommended,
 
   // Prettier: must be last
   prettier,

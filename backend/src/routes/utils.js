@@ -14,11 +14,9 @@ export const emptyResponse = (statusCode, headers = {}) => ({
 
 export const getCorsHeaders = (origin) => {
   const allowList = (process.env.ALLOWED_ORIGINS ?? "*").split(",").map((s) => s.trim());
-  const allowOrigin = allowList.includes("*")
-    ? "*"
-    : allowList.includes(origin ?? "")
-      ? origin
-      : allowList[0] || "*";
+  let allowOrigin = allowList[0] || "*";
+  if (allowList.includes("*")) allowOrigin = "*";
+  else if (allowList.includes(origin ?? "")) allowOrigin = origin;
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": "authorization,content-type",
