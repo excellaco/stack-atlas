@@ -57,20 +57,6 @@ resource "aws_lambda_function" "api" {
   tags = local.default_tags
 }
 
-data "aws_iam_policy_document" "lambda_self_invoke" {
-  statement {
-    effect    = "Allow"
-    actions   = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_function.api.arn]
-  }
-}
-
-resource "aws_iam_role_policy" "lambda_self_invoke" {
-  name   = "${local.safe_name}-lambda-self-invoke"
-  role   = aws_iam_role.lambda.id
-  policy = data.aws_iam_policy_document.lambda_self_invoke.json
-}
-
 resource "aws_apigatewayv2_api" "api" {
   name          = "${local.safe_name}-api"
   protocol_type = "HTTP"

@@ -30,17 +30,18 @@ export default function CommitLog({ token, projectId, itemsById }) {
     })
   }
 
-  if (!commits.length && !loading) return null
-
   return (
     <div className="commit-log">
       <div className="commit-log-header" onClick={() => setIsOpen(!isOpen)}>
-        <h4>History ({commits.length})</h4>
+        <h4>History{commits.length > 0 ? ` (${commits.length})` : ''}</h4>
         <span className="commit-log-toggle">{isOpen ? '−' : '+'}</span>
       </div>
       {isOpen && (
         <div className="commit-log-list">
           {loading && <div className="diff-empty">Loading...</div>}
+          {!loading && !commits.length && (
+            <div className="diff-empty">No commits yet — make changes and commit to start tracking history.</div>
+          )}
           {commits.map((commit, index) => {
             const isExpanded = expanded.has(commit.id)
             const prevSnapshot = index < commits.length - 1 ? commits[index + 1]?.snapshot : null

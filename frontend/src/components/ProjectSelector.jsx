@@ -3,7 +3,7 @@ import './ProjectSelector.css'
 
 export default function ProjectSelector({
   token, projects, activeProject, activeSubsystem, subsystems,
-  onSelectProject, onSelectSubsystem, onLoadProject,
+  onSelectProject, onSelectSubsystem,
   canEdit, isAdmin, onCreateProject, onDeleteProject,
   onCreateSubsystem, onDeleteSubsystem, dirty,
   hasDraft, draftStatus, onCommit, onDiscard
@@ -48,9 +48,6 @@ export default function ProjectSelector({
         </select>
         {activeProject && (
           <>
-            <button type="button" className="ghost" onClick={onLoadProject}>
-              Load
-            </button>
             {canEdit && (
               <>
                 {draftStatus === 'saving' && (

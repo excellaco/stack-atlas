@@ -28,8 +28,10 @@ function App() {
   const [selectedCategories, setSelectedCategories] = useState([])
   const [selectedTypes, setSelectedTypes] = useState([])
   const [selectedTags, setSelectedTags] = useState([])
+  const [selectedProviders, setSelectedProviders] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
+  const [isProvidersOpen, setIsProvidersOpen] = useState(true)
   const [isTypesOpen, setIsTypesOpen] = useState(true)
   const [isTagsOpen, setIsTagsOpen] = useState(false)
   const [viewMode, setViewMode] = useState('hierarchy')
@@ -89,6 +91,11 @@ function App() {
     () => Object.entries(tagCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 10).map(([tag]) => tag),
     [tagCounts]
   )
+  const PROVIDERS = [
+    { id: 'aws', label: 'AWS' },
+    { id: 'azure', label: 'Azure' },
+    { id: 'gcp', label: 'GCP' }
+  ]
 
   // Restore session on mount
   useEffect(() => {
@@ -186,19 +193,21 @@ function App() {
     setHasDraft(false)
     setDraftStatus('idle')
     setDraftSubsystems({})
+    if (project) handleLoadProject(projectId)
   }
 
-  const handleLoadProject = async () => {
-    if (!token || !activeProject) return
+  const handleLoadProject = async (projectIdOverride) => {
+    const pid = projectIdOverride || activeProject?.id
+    if (!token || !pid) return
     skipAutoSave.current = true
     try {
       // Load committed state
-      const stack = await api.getStack(token, activeProject.id)
+      const stack = await api.getStack(token, pid)
       const committedItems = stack?.items || []
       setSavedStack(committedItems)
 
       // Load subsystems for draft tracking
-      const subs = await api.listSubsystems(token, activeProject.id)
+      const subs = await api.listSubsystems(token, pid)
       setSubsystems(subs)
       const subState = {}
       for (const s of subs) {
@@ -207,7 +216,7 @@ function App() {
 
       // Check for existing draft
       try {
-        const draft = await api.getDraft(token, activeProject.id)
+        const draft = await api.getDraft(token, pid)
         if (draft) {
           setSelectedItems(draft.stack?.items || committedItems)
           setDraftSubsystems(draft.subsystems || subState)
@@ -360,6 +369,7 @@ function App() {
     const project = await api.createProject(token, { name, description })
     setProjects((prev) => [...prev, project])
     setActiveProject(project)
+    handleLoadProject(project.id)
   }
 
   const handleDeleteProject = async (projectId) => {
@@ -381,6 +391,7 @@ function App() {
     if (!token || !activeProject) return
     const sub = await api.createSubsystem(token, activeProject.id, { name, description })
     setSubsystems((prev) => [...prev, sub])
+    setActiveSubsystem(sub)
   }
 
   const handleDeleteSubsystem = async (subId) => {
@@ -435,6 +446,9 @@ function App() {
       if (selectedCategories.length && !selectedCategories.includes(item.category)) {
         return false
       }
+      if (selectedProviders.length && !selectedProviders.some((p) => item.tags?.includes(p))) {
+        return false
+      }
       if (selectedTypes.length && !selectedTypes.includes(item.type)) {
         return false
       }
@@ -460,7 +474,7 @@ function App() {
     }
 
     return catalogItems.filter((item) => ids.has(item.id))
-  }, [query, selectedCategories, selectedTypes, selectedTags, viewMode, catalogItems, categoryById, itemsById])
+  }, [query, selectedCategories, selectedProviders, selectedTypes, selectedTags, viewMode, catalogItems, categoryById, itemsById])
 
   const sections = useMemo(() => {
     return catalogCategories
@@ -528,6 +542,7 @@ function App() {
   const resetFilters = () => {
     setQuery('')
     setSelectedCategories([])
+    setSelectedProviders([])
     setSelectedTypes([])
     setSelectedTags([])
   }
@@ -627,7 +642,6 @@ function App() {
           subsystems={subsystems}
           onSelectProject={handleSelectProject}
           onSelectSubsystem={handleSelectSubsystem}
-          onLoadProject={handleLoadProject}
           canEdit={activeProject ? canEditProject(activeProject.id) : false}
           isAdmin={isAdmin}
           onCreateProject={handleCreateProject}
@@ -690,6 +704,40 @@ function App() {
                   >
                     {category.name}
                     <span className="chip-count">{categoryCounts[category.id]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="filter-block">
+            <div className="filter-heading">
+              <div className="filter-title">Cloud Provider</div>
+              <button
+                type="button"
+                className="filter-toggle"
+                aria-expanded={isProvidersOpen}
+                onClick={() => setIsProvidersOpen((prev) => !prev)}
+              >
+                {isProvidersOpen ? '−' : '+'}
+              </button>
+            </div>
+            {isProvidersOpen && (
+              <div className="chip-grid">
+                {PROVIDERS.map((provider) => (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    className="chip"
+                    data-active={selectedProviders.includes(provider.id) || undefined}
+                    onClick={() =>
+                      setSelectedProviders((prev) =>
+                        toggleInList(prev, provider.id)
+                      )
+                    }
+                  >
+                    {provider.label}
+                    <span className="chip-count">{tagCounts[provider.id] || 0}</span>
                   </button>
                 ))}
               </div>

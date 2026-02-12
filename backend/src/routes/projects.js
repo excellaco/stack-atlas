@@ -2,7 +2,8 @@ import { randomUUID } from "crypto";
 import { isAdmin, isEditor } from "../roles.js";
 import {
   getProjectIndex, putProjectIndex,
-  getStack, putStack, deleteProjectData
+  getStack, putStack, deleteProjectData,
+  listSubsystems, getCatalog
 } from "../storage.js";
 import { jsonResponse, parseBody, slugify, authenticate } from "./utils.js";
 
@@ -99,6 +100,29 @@ export const handleProjects = async (method, path, event, cors) => {
       await putProjectIndex(index);
     }
     return jsonResponse(200, { data: stack }, cors);
+  }
+
+  // --- Public view (no auth) ---
+  const viewMatch = path.match(/^\/projects\/([^/]+)\/view$/);
+
+  if (method === "GET" && viewMatch) {
+    const projectId = decodeURIComponent(viewMatch[1]);
+    const index = await getProjectIndex();
+    const project = index.projects.find((p) => p.id === projectId);
+    if (!project) return jsonResponse(404, { message: "Project not found" }, cors);
+    const stack = await getStack(projectId);
+    const subsystemsList = await listSubsystems(projectId);
+    const catalog = await getCatalog();
+    return jsonResponse(200, {
+      data: {
+        project,
+        stack: stack?.items || [],
+        subsystems: subsystemsList,
+        categories: catalog?.categories || [],
+        items: catalog?.items || [],
+        descriptions: catalog?.descriptions || {}
+      }
+    }, cors);
   }
 
   return null;

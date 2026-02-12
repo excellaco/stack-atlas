@@ -1,0 +1,117 @@
+.project-view {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.project-view-loading,
+.project-view-error {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.project-view-error {
+  color: #b91c1c;
+}
+
+.project-view-back {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 0.75rem;
+}
+
+.project-view-back:hover {
+  text-decoration: underline;
+}
+
+.project-view-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.project-view-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem;
+}
+
+.project-view-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.project-view-content h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.project-view-content h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--ink);
+}
+
+.project-view-content ul,
+.project-view-content ol {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.project-view-content li {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.project-view-content p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.project-view-subsystems {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.project-view-subsystems h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+}
+
+.project-view-subsystem {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.project-view-subsystem h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.25rem;
+}
+
+.project-view-subsystem p {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 0.25rem;
+}
+
+.project-view-subsystem ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--muted);
+}

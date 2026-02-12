@@ -103,3 +103,7 @@ export const breakLock = (token, projectId, userSub) =>
 // Admin - Activity
 export const getActivity = (token) =>
   request("/admin/activity", { token });
+
+// Public
+export const getProjectView = (projectId) =>
+  request(`/projects/${encodeURIComponent(projectId)}/view`);
